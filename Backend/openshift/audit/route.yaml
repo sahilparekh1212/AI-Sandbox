@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: audit-service
+  namespace: ai-sandbox
+  labels:
+    app: audit-service
+spec:
+  to:
+    kind: Service
+    name: audit-service
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

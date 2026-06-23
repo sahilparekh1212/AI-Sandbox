@@ -4,5 +4,6 @@ include 'Account'
 include 'Transaction'
 include 'Audit'
 include 'Notification'
-include 'Offers'
+include 'Report'
+include 'Auth'
 

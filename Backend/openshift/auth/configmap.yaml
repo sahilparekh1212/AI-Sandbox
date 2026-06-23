@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+  namespace: ai-sandbox
+data:
+  SPRING_APPLICATION_NAME: auth-service
+  SERVER_PORT: "8085"
+  # Profile driving this deployment — bump to SIT/UAT/PROD per cluster
+  SPRING_PROFILES_ACTIVE: DEV
+  SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE: openid,profile,email
+  SPRINGDOC_API_DOCS_PATH: /v3/api-docs
+  SPRINGDOC_SWAGGER_UI_PATH: /swagger-ui.html
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health

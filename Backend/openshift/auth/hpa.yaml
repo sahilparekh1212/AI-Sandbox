@@ -1,0 +1,21 @@
+# Auth service can scale horizontally once AUTH_RSA_PRIVATE_KEY is set from the Secret,
+# ensuring all pods sign tokens with the same stable RSA key.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth-service-hpa
+  namespace: ai-sandbox
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-service
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
