@@ -31,8 +31,9 @@ import java.time.Instant;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/audit-logs")
-@Tag(name = "Audit Logs", description = "Audit log operations (immutable — no update)")
+@RequestMapping("/api/v1/audit-logs")
+@Tag(name = "Audit Logs v1", description = "Audit log operations (immutable — no update). "
+	+ "URI-versioned: see AuditLogV2Controller for the v2 paginated listing.")
 public class AuditLogController {
 
 	private static final Logger log = LoggerFactory.getLogger(AuditLogController.class);

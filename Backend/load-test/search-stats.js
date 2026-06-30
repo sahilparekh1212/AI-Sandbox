@@ -44,7 +44,7 @@ export function setup() {
       action: ACTION[i % ACTION.length],
       details: `seed-${i}`,
     });
-    http.post(`${BASE}/api/audit-logs`, body, { headers: { 'Content-Type': 'application/json' } });
+    http.post(`${BASE}/api/v1/audit-logs`, body, { headers: { 'Content-Type': 'application/json' } });
   }
 }
 
@@ -52,7 +52,7 @@ export default function () {
   const entityType = ENTITY[Math.floor(Math.random() * ENTITY.length)];
 
   const search = http.get(
-    `${BASE}/api/audit-logs/search?entityType=${entityType}&page=0&size=20&sort=createdAt,desc`,
+    `${BASE}/api/v1/audit-logs/search?entityType=${entityType}&page=0&size=20&sort=createdAt,desc`,
   );
   const searchOk = check(search, {
     'search 200': (r) => r.status === 200,
@@ -60,7 +60,7 @@ export default function () {
   });
   checkFails.add(!searchOk);
 
-  const stats = http.get(`${BASE}/api/audit-logs/stats?entityType=${entityType}`);
+  const stats = http.get(`${BASE}/api/v1/audit-logs/stats?entityType=${entityType}`);
   const statsOk = check(stats, {
     'stats 200': (r) => r.status === 200,
     'stats has total': (r) => r.json('total') !== undefined,

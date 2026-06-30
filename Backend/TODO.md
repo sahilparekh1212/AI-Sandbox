@@ -17,7 +17,7 @@ needs.
       - `shell` (host) — top-level nav, auth/session state, routes to the remotes
       - `auth-mfe` — Google login entry, profile (from `GET /auth/me`), logout, token refresh
       - `audit-mfe` — audit dashboard: server-side paginated/filterable table over
-        `/api/audit-logs/search` + charts over `/api/audit-logs/stats`
+        `/api/v1/audit-logs/search` + charts over `/api/v1/audit-logs/stats`
       - `shared` lib — HTTP auth interceptor, DTO models, design-system components
 - [ ] **Auth wiring in the SPA.** HTTP interceptor adding `Authorization: Bearer …`, silent
       refresh via `POST /auth/refresh`, route guards, and a token-storage strategy (see the

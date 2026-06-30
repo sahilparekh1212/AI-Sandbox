@@ -32,7 +32,7 @@ export const options = {
 
 export default function () {
   const body = JSON.stringify({ entityType: 'User', action: 'CREATE', details: 'rl' });
-  const res = http.post(`${BASE}/api/audit-logs`, body, {
+  const res = http.post(`${BASE}/api/v1/audit-logs`, body, {
     headers: { 'Content-Type': 'application/json' },
   });
 
