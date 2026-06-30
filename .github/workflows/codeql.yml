@@ -1,0 +1,51 @@
+name: CodeQL
+
+# GitHub's native SAST for the Java backend. Findings appear in the repo Security tab.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Backend/**'
+      - '.github/workflows/codeql.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Backend/**'
+      - '.github/workflows/codeql.yml'
+  schedule:
+    - cron: '0 6 * * 1' # weekly, so newly-published rules catch existing code
+
+jobs:
+  analyze:
+    name: Analyze (java-kotlin)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # upload results to the Security tab
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin
+          build-mode: manual
+
+      # Manual build so CodeQL traces the real compilation (autobuild can misread the
+      # relocated build dir + gradlew-in-Backend layout).
+      - name: Compile (production sources)
+        working-directory: Backend
+        run: ./gradlew compileJava
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:java-kotlin"

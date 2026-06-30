@@ -130,5 +130,61 @@ jobs:
           path: audit-*.log
           if-no-files-found: ignore
 
+  trivy:
+    name: Trivy CVE scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # upload SARIF to the Security tab
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Boot jars bundle their dependencies, which is what Trivy's jar analyzer scans for CVEs.
+      - name: Build boot jars
+        working-directory: Backend
+        run: ./gradlew :Audit:bootJar :Auth:bootJar
+
+      - name: Stage jars for scanning
+        run: |
+          mkdir -p trivy-jars
+          cp Backend/Audit/build/libs/*.jar Backend/Auth/build/libs/*.jar trivy-jars/
+          ls -la trivy-jars
+
+      # Report everything to the Security tab (does not fail the job).
+      - name: Trivy scan → SARIF (report)
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          scan-type: fs
+          scan-ref: trivy-jars
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      # Gate: fail on fixable HIGH/CRITICAL CVEs in dependencies.
+      - name: Trivy scan → gate
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          scan-type: fs
+          scan-ref: trivy-jars
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
   # Secret scanning, file hygiene and commit-message linting run repo-wide in the
-  # Lint workflow (.github/workflows/lint.yml), so they are not duplicated here.
+  # Lint workflow (.github/workflows/lint.yml). CodeQL SAST runs in codeql.yml, and
+  # Dependabot (.github/dependabot.yml) opens update PRs for vulnerable dependencies.
