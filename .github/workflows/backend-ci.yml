@@ -159,7 +159,7 @@ jobs:
 
       # Report everything to the Security tab (does not fail the job).
       - name: Trivy scan → SARIF (report)
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: trivy-jars
@@ -176,7 +176,7 @@ jobs:
 
       # Gate: fail on fixable HIGH/CRITICAL CVEs in dependencies.
       - name: Trivy scan → gate
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: trivy-jars
