@@ -1,0 +1,21 @@
+# Normalize all text files to LF in the repo and on checkout, so Windows CRLF checkouts stop
+# tripping Spotless / diffs. Overrides core.autocrlf for matched files.
+* text=auto eol=lf
+
+# Windows scripts must stay CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Gradle wrapper shell script stays LF.
+gradlew text eol=lf
+
+# Binaries: never touch line endings.
+*.jar binary
+*.war binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.keystore binary
