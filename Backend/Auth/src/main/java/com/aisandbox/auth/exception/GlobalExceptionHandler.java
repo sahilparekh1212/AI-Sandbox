@@ -1,5 +1,7 @@
 package com.aisandbox.auth.exception;
 
+import com.aisandbox.auth.ratelimit.ActiveRequest;
+import com.aisandbox.auth.ratelimit.DiscardContext;
 import com.aisandbox.auth.ratelimit.RateLimitProperties;
 import com.aisandbox.auth.ratelimit.RequestDiscardedException;
 import org.slf4j.Logger;
@@ -10,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -34,6 +37,16 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
+	 * Unknown route / missing static resource. Without this, the catch-all below would turn a
+	 * mistyped or unversioned URL into a misleading 500 instead of a 404.
+	 */
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<Map<String, Object>> handleNoResource(NoResourceFoundException ex) {
+		logException(ex);
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(404, "Not Found", ex));
+	}
+
+	/**
 	 * A newer request superseded this one. Tell the client it may retry after the
 	 * configured cool-down (HTTP 429 + Retry-After).
 	 */
@@ -48,6 +61,13 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Map<String, Object>> handleAll(Exception ex) {
+		// A superseded (rate-limited) request can fail mid-work because the "newest wins" limiter
+		// interrupted its worker thread (e.g. during the DB write). Surface that as a 429 like any
+		// other discard, not a misleading 500.
+		ActiveRequest current = DiscardContext.current();
+		if (current != null && current.isDiscarded()) {
+			return handleDiscarded(new RequestDiscardedException(current.getKey()));
+		}
 		logException(ex);
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorBody(500, "Internal Server Error", ex));
 	}

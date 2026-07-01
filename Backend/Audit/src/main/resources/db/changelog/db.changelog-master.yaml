@@ -1,0 +1,76 @@
+# Liquibase master changelog at Spring Boot's default path (classpath:/db/changelog/
+# db.changelog-master.yaml), so it is auto-discovered without any property — which matters
+# because the test application.properties shadows the main one. Add new versioned changesets below.
+databaseChangeLog:
+  # Baseline schema for audit_logs. Mirrors AuditLog + AuditableEntity and the three @Index
+  # definitions, so Hibernate can run with ddl-auto=none.
+  - changeSet:
+      id: 001-create-audit-logs
+      author: aisandbox
+      changes:
+        - createTable:
+            tableName: audit_logs
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: VARCHAR(255)
+              - column:
+                  name: action
+                  type: VARCHAR(255)
+              - column:
+                  name: details
+                  type: VARCHAR(255)
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_id
+                  type: VARCHAR(255)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+              - column:
+                  name: created_by_request_id
+                  type: VARCHAR(255)
+              - column:
+                  name: updated_by_request_id
+                  type: VARCHAR(255)
+        # Default listing (active rows, newest first) + createdAt range filters.
+        - createIndex:
+            indexName: idx_audit_active_created
+            tableName: audit_logs
+            columns:
+              - column:
+                  name: deleted
+              - column:
+                  name: created_at
+        # Equality filters and the grouped /stats aggregation.
+        - createIndex:
+            indexName: idx_audit_entity_type_action
+            tableName: audit_logs
+            columns:
+              - column:
+                  name: entity_type
+              - column:
+                  name: action
+        # Idempotent Kafka consumption: at most one row per source event id.
+        - createIndex:
+            indexName: idx_audit_event_id
+            tableName: audit_logs
+            unique: true
+            columns:
+              - column:
+                  name: event_id

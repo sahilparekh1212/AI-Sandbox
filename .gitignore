@@ -31,3 +31,7 @@ build/
 *.iml
 .idea/
 *.h2.db
+
+# Keep the Gradle wrapper jar (needed to run ./gradlew on CI)
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar

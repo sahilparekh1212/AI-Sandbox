@@ -1,0 +1,22 @@
+# Dependabot: raises security alerts and opens update PRs for vulnerable dependencies.
+# https://docs.github.com/code-security/dependabot
+version: 2
+updates:
+  # Gradle dependencies for the multi-module backend (root build.gradle + Audit/Auth).
+  - package-ecosystem: gradle
+    directory: "/Backend"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "backend"]
+    commit-message:
+      prefix: "build" # conventional-commit prefix so the commit-lint check passes
+
+  # The GitHub Actions used across the workflows.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "ci"
