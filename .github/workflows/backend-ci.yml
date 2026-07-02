@@ -62,7 +62,7 @@ jobs:
 
       - name: Upload coverage reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-reports
           path: Backend/*/build/reports/jacoco/test/html
@@ -126,7 +126,7 @@ jobs:
 
       - name: Upload load-test app logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: load-test-app-logs
           path: audit-*.log
@@ -172,7 +172,7 @@ jobs:
 
       - name: Upload Trivy SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results.sarif
           category: trivy-jars
@@ -223,14 +223,14 @@ jobs:
 
       - name: Upload Trivy Audit image SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-audit-image.sarif
           category: trivy-audit-image
 
       - name: Upload Trivy Auth image SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-auth-image.sarif
           category: trivy-auth-image
