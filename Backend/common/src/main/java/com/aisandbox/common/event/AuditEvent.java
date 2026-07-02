@@ -1,13 +1,14 @@
-package com.aisandbox.auth.event;
+package com.aisandbox.common.event;
 
 import java.time.Instant;
 
 /**
- * The Kafka message published to {@code audit.events} when an auditable action happens in Auth.
+ * The Kafka message published to {@code audit.events} when an auditable action happens in Auth,
+ * and consumed by Audit to persist an {@code AuditLog}.
  *
- * <p>Serialized as JSON, so the Audit consumer can deserialize into its own copy of this record
- * without a shared class (there is no shared module yet). {@code eventId} gives the consumer a
- * key for idempotent, at-least-once handling.
+ * <p>Shared between the two services (rather than one JSON-compatible copy per service) via this
+ * {@code :common} module. {@code eventId} is the idempotency key the consumer dedups on for
+ * at-least-once delivery.
  *
  * @param eventId     unique id for this event (consumer dedup key)
  * @param entityType  the audited entity type (used as the Kafka partition key)

@@ -1,4 +1,4 @@
-package com.aisandbox.audit.ratelimit;
+package com.aisandbox.common.ratelimit;
 
 import org.junit.jupiter.api.Test;
 

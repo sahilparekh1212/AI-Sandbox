@@ -1,4 +1,4 @@
-package com.aisandbox.audit.ratelimit;
+package com.aisandbox.common.ratelimit;
 
 /**
  * Per-thread handle to the current request's {@link ActiveRequest}.

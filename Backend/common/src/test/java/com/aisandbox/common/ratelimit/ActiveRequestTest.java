@@ -1,4 +1,4 @@
-package com.aisandbox.audit.ratelimit;
+package com.aisandbox.common.ratelimit;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,8 +29,8 @@ class ActiveRequestTest {
 
 	@Test
 	void getKey_returnsTheKeyItWasRegisteredWith() {
-		ActiveRequest req = new ActiveRequest("user-1|GET|/api/audit-logs", Thread.currentThread());
+		ActiveRequest req = new ActiveRequest("user-1|GET|/api/resource", Thread.currentThread());
 
-		assertThat(req.getKey()).isEqualTo("user-1|GET|/api/audit-logs");
+		assertThat(req.getKey()).isEqualTo("user-1|GET|/api/resource");
 	}
 }

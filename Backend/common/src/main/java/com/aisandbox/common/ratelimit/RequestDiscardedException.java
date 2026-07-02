@@ -1,4 +1,4 @@
-package com.aisandbox.auth.ratelimit;
+package com.aisandbox.common.ratelimit;
 
 /**
  * Thrown when an in-flight request is superseded by a newer request for the same

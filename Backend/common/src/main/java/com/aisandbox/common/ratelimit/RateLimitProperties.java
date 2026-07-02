@@ -1,4 +1,4 @@
-package com.aisandbox.auth.ratelimit;
+package com.aisandbox.common.ratelimit;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;

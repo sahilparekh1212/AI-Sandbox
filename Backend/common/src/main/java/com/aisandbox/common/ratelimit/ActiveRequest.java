@@ -1,4 +1,4 @@
-package com.aisandbox.auth.ratelimit;
+package com.aisandbox.common.ratelimit;
 
 /**
  * Handle to a single in-flight request for a (user, endpoint) key.
