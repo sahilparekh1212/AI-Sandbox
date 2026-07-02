@@ -41,3 +41,18 @@ updates:
       github-actions:
         applies-to: version-updates
         patterns: ["*"]
+
+  # Docker base images in the service Dockerfiles. The gradle/actions ecosystems above don't see
+  # these, so base-image OS CVEs (Trivy's image scan) would otherwise never get an update PR.
+  - package-ecosystem: docker
+    directories:
+      - "/Backend/Auth"
+      - "/Backend/Audit"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "build"
+    groups:
+      docker-base-images:
+        patterns: ["*"]
