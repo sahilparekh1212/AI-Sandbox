@@ -188,11 +188,14 @@ jobs:
 
       # Build the actual deployable images so Trivy's image analyzer can also catch base-image/OS
       # CVEs (e.g. in eclipse-temurin:17-jre-alpine) — the jar scan above only covers bundled
-      # dependencies, not the OS layer. Build context is the repo root per each Dockerfile's header.
+      # dependencies, not the OS layer. Each Dockerfile's COPY paths are relative to Backend/ (its
+      # own header comment's "repo root" means Backend/, not the actual git root one level up), so
+      # this must run with Backend/ as both the working directory and the build context.
       - name: Build Docker images
+        working-directory: Backend
         run: |
-          docker build -f Backend/Audit/Dockerfile -t audit-service:ci .
-          docker build -f Backend/Auth/Dockerfile -t auth-service:ci .
+          docker build -f Audit/Dockerfile -t audit-service:ci .
+          docker build -f Auth/Dockerfile -t auth-service:ci .
 
       # Report-only for now (this job is a required branch-protection check — see TODO.md): confirm
       # a green run against the current base images before adding exit-code: '1' here too.
