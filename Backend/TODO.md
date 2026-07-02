@@ -8,26 +8,34 @@ shape (Auth: Google OAuth2 → JWT, JWKS, /auth/me, refresh, logout; Audit: pagi
 search + aggregation; rate limiting; observability; CI). The gaps are the UI and the seams it
 needs.
 
-### Frontend — the headline deliverable (`UI/` is currently 0 files)
-- [ ] **Scaffold the Angular workspace in `UI/`.** Angular 17+ standalone components, routing,
-      ESLint + Prettier, unit tests (Jest/Karma). Wire an `npm`/`ng` build.
-- [ ] **Microfrontend architecture: shell + remotes.** Use Module Federation
-      (`@angular-architects/module-federation`) or Angular Native Federation. Proposed split
-      aligned to the backend domains:
-      - `shell` (host) — top-level nav, auth/session state, routes to the remotes
-      - `auth-mfe` — Google login entry, profile (from `GET /auth/me`), logout, token refresh
-      - `audit-mfe` — audit dashboard: server-side paginated/filterable table over
-        `/api/v1/audit-logs/search` + charts over `/api/v1/audit-logs/stats`
-      - `shared` lib — HTTP auth interceptor, DTO models, design-system components
-- [ ] **Auth wiring in the SPA.** HTTP interceptor adding `Authorization: Bearer …`, silent
-      refresh via `POST /auth/refresh`, route guards, and a token-storage strategy (see the
-      OAuth-handoff item below — it dictates this).
-- [ ] **Audit feature UI.** Server-side paginated table (page/size/sort), filter form
-      (entityType/action/date range), and stats charts (by action / by entityType) against the
-      endpoints already built.
-- [ ] **Frontend CI + container.** Add a UI job to GitHub Actions (lint, build, unit tests,
-      optional Playwright/Cypress e2e), make it a required check, and containerize the UI
-      (nginx) for the compose stack.
+### Frontend — the headline deliverable (`UI/` — Angular 19 SPA, built)
+- [x] **Scaffold the Angular workspace in `UI/`.** Angular 19 standalone components, routing,
+      ESLint (angular-eslint) + Prettier, Karma/Jasmine unit tests (CI-safe
+      `ChromeHeadlessNoSandbox` launcher). `npm`/`ng` build wired.
+- [x] **Microfrontend architecture — articulated via ADR, not built.** Chose to document the
+      decision rather than build the split (like the API-gateway item): see
+      [ADR-0008](docs/adr/0008-no-microfrontend-split.md). Why one standalone SPA beats a
+      shell + `auth-mfe` + `audit-mfe` + `shared` federation for a solo-built, two-feature app
+      shipped as one artifact — every MFE benefit (independent deploy cadence, team autonomy, tech
+      independence) is latent here while every cost (runtime remote loading, shared-dep version
+      skew, build/CI complexity) is immediate; Angular lazy routes already give the code-splitting
+      win in-app. Names the concrete triggers (independent deploy, separate teams, tech divergence)
+      and that `@angular-architects/native-federation` is the tool if they appear. Keeps ADR-0005
+      stable (the "MFE gets built" gateway trigger doesn't fire).
+- [x] **Auth wiring in the SPA — implemented.** Functional HTTP interceptor adding
+      `Authorization: Bearer …` (our APIs only) with single silent refresh + retry on 401,
+      functional route guard with `returnUrl`, OAuth fragment handoff (reads `#access_token`, then
+      `history.replaceState`), signal-based `AuthService`, and a localStorage token store (tradeoff
+      vs httpOnly cookies documented). Login/callback/profile pages.
+- [x] **Audit feature UI — implemented.** Server-side paginated + sortable table (page/size/sort),
+      filter form (entityType/action/date range), and by-action/by-entityType stats as
+      dependency-free CSS bar charts, against `/api/v1/audit-logs/search` + `/stats`. Contract
+      matched to the backend DTOs (`PagedResponse` envelope, `AuditLogStats`).
+- [~] **Frontend CI + container.** CI done: a `Frontend CI` workflow (format check, lint, prod
+      build, headless unit tests) on `UI/**`, plus the backend required-check path filters broadened
+      to `UI/**` so UI-only PRs are mergeable. Still open: an **nginx container** for the UI + a UI
+      service in the compose stack, and (optional) making Frontend CI a required branch-protection
+      check.
 
 ### Backend seams the UI depends on (do these before/with the UI)
 - [x] **CORS — implemented.** Both services now configure CORS in `SecurityConfig` via
