@@ -403,3 +403,48 @@ pre-commit run --all-files   # scan the whole repo on demand
 
 If a real secret ever lands in git history, **rotate it** (regenerate the Google client
 secret / RSA key / Grafana password) — deleting the file does not remove it from history.
+
+---
+
+## Security & supply-chain scanning
+
+Four layers of automated scanning run in CI and on a schedule, each covering a distinct class of
+risk. Findings surface in the repo's **Security tab**, and CodeQL + Trivy are **required branch-
+protection checks**, so a new SAST alert or a fixable HIGH/CRITICAL CVE blocks the merge rather
+than landing after the fact.
+
+| Layer | Tool | What it catches | Where |
+|-------|------|-----------------|-------|
+| **SAST** (code flaws) | **CodeQL** | Injection, auth mistakes, unsafe APIs in the Java code | `.github/workflows/codeql.yml` |
+| **SCA** (dependency CVEs) | **Trivy** (jar scan) + **Dependabot** | Known vulns in bundled libraries; automated update PRs | `trivy` job in `backend-ci.yml`; `.github/dependabot.yml` |
+| **Container image CVEs** | **Trivy** (image scan) | OS/base-image vulns in the built `eclipse-temurin` images | `trivy` job in `backend-ci.yml` |
+| **Secrets** | **gitleaks** + **detect-private-key** | Committed credentials/keys, pre-commit and in CI | pre-commit hook (above) + `lint.yml` |
+
+Dependabot watches three ecosystems — **gradle**, **github-actions**, and **docker** (base images) —
+groups routine bumps into a couple of PRs a week, and opens security-update PRs immediately for
+vulnerable dependencies.
+
+### Why this stack (and not a commercial suite like Snyk)
+
+This was a deliberate choice, not a default — the trade-offs:
+
+- **Full category coverage, no gap.** SAST, SCA, container, and secrets are each covered. The four
+  tools map one-to-one onto what a single commercial platform (e.g. Snyk) bundles, so there's no
+  capability being given up — only the single-vendor dashboard.
+- **Native to where the code lives.** CodeQL and Dependabot are first-party GitHub: results land in
+  the Security tab, alerts gate PRs through branch protection, and there's **no extra service,
+  runner, or API token** to provision or keep secret. One less integration to own.
+- **Defense in depth via independent sources.** Trivy, CodeQL, and Dependabot draw on *different*
+  vulnerability databases (Trivy's advisories, GitHub's Advisory DB, CodeQL's query packs). Layering
+  independent scanners catches more than relying on one vendor's feed — the same reason the Trivy
+  image scan runs *in addition to* the jar scan.
+- **Free and quota-free at any scan volume.** The OSS tools (Trivy, gitleaks) impose no monthly
+  test caps. A free commercial tier typically does, which a chatty CI pipeline can exhaust; here
+  every push and PR can scan without metering.
+- **No vendor lock-in.** All configuration is plain YAML in this repo; the pipeline is portable to
+  any CI, not tied to a SaaS account.
+
+**When a commercial tool like Snyk would earn its place:** a single dashboard across *many* repos,
+auto-generated fix PRs, license-compliance policy enforcement, or simply matching an organization's
+existing standard. At single-repo scale, the GitHub-native + OSS stack delivers the same protection
+for zero cost and less operational surface — so it's added only if one of those triggers appears.
