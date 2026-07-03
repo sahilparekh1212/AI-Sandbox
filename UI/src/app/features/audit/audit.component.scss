@@ -141,14 +141,30 @@
 
   table {
     width: 100%;
+    // Fixed layout: column widths come from the declarations below, not from row contents.
+    // Under auto layout, sorting swaps which rows are visible and reflows every column —
+    // the header must not wobble when a sort is applied.
+    table-layout: fixed;
     border-collapse: collapse;
     font-size: 0.9rem;
+
+    th:nth-child(1) {
+      width: 230px; // fits "Jul 2, 2026, 11:19:44 PM" plus the sort indicator
+    }
+
+    th:nth-child(2),
+    th:nth-child(3) {
+      width: 14%;
+    }
+
+    // Details takes the remaining width.
 
     th,
     td {
       text-align: left;
       padding: 0.5rem 0.6rem;
       border-bottom: 1px solid #eef0f3;
+      overflow-wrap: break-word; // fixed columns clip instead of grow — wrap long content
     }
 
     // Column headers stay visible while the rows scroll, parked just below the sticky
