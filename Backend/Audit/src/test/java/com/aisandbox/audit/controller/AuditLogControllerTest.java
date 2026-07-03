@@ -126,7 +126,7 @@ class AuditLogControllerTest {
 		Page<AuditLog> page = new PageImpl<>(List.of(row), pageable, 1);
 		when(auditLogService.search(any(AuditLogFilter.class), any(Pageable.class))).thenReturn(page);
 
-		PagedResponse<AuditLog> response = controller.search("User", "CREATE", null, null, false, pageable);
+		PagedResponse<AuditLog> response = controller.search("User", "CREATE", null, null, null, false, pageable);
 
 		assertThat(response.content()).containsExactly(row);
 		assertThat(response.page()).isZero();
@@ -144,10 +144,22 @@ class AuditLogControllerTest {
 		when(auditLogService.search(any(AuditLogFilter.class), any(Pageable.class)))
 			.thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
-		controller.search("Order", "DELETE", from, to, true, pageable);
+		controller.search("Order", "DELETE", null, from, to, true, pageable);
 
 		verify(auditLogService).search(
 			eq(new AuditLogFilter("Order", "DELETE", from, to, true)), eq(pageable));
+	}
+
+	@Test
+	void search_forwardsTheDetailsFilterToTheService() {
+		Pageable pageable = PageRequest.of(0, 20);
+		when(auditLogService.search(any(AuditLogFilter.class), any(Pageable.class)))
+			.thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+		controller.search(null, null, "sales report", null, null, false, pageable);
+
+		verify(auditLogService).search(
+			eq(new AuditLogFilter(null, null, "sales report", null, null, false)), eq(pageable));
 	}
 
 	@Test
@@ -156,10 +168,10 @@ class AuditLogControllerTest {
 			List.of(new AuditLogCount("CREATE", 3)), List.of(new AuditLogCount("User", 3)));
 		when(auditLogService.aggregate(any(AuditLogFilter.class))).thenReturn(stats);
 
-		AuditLogStats result = controller.stats("User", null, null, null, false);
+		AuditLogStats result = controller.stats("User", null, "demo", null, null, false);
 
 		assertThat(result).isSameAs(stats);
-		verify(auditLogService).aggregate(new AuditLogFilter("User", null, null, null, false));
+		verify(auditLogService).aggregate(new AuditLogFilter("User", null, "demo", null, null, false));
 	}
 
 	@Test

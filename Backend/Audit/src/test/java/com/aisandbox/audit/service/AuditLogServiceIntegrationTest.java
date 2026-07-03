@@ -114,6 +114,43 @@ class AuditLogServiceIntegrationTest {
 	}
 
 	@Test
+	void search_matchesDetailsBySubstringCaseInsensitively() {
+		repository.save(new AuditLog("Report", "CREATE", "Monthly Sales report generated"));
+		repository.flush();
+
+		Page<AuditLog> page = service.search(
+			new AuditLogFilter(null, null, "sales REPORT", null, null, false), PageRequest.of(0, 20));
+
+		assertThat(page.getTotalElements()).isEqualTo(1);
+		assertThat(page.getContent().get(0).getDetails()).isEqualTo("Monthly Sales report generated");
+	}
+
+	@Test
+	void search_treatsLikeWildcardsInDetailsAsLiterals() {
+		repository.save(new AuditLog("Job", "UPDATE", "progress 100% done"));
+		repository.flush();
+
+		// A literal % in the query must still match its row, and "_" must not act as the
+		// single-character wildcard: unescaped, "1_0" would match the "100" in the row above.
+		Page<AuditLog> literalPercent = service.search(
+			new AuditLogFilter(null, null, "100% done", null, null, false), PageRequest.of(0, 20));
+		Page<AuditLog> underscoreAsLiteral = service.search(
+			new AuditLogFilter(null, null, "1_0", null, null, false), PageRequest.of(0, 20));
+
+		assertThat(literalPercent.getTotalElements()).isEqualTo(1);
+		assertThat(underscoreAsLiteral.getTotalElements()).isZero();
+	}
+
+	@Test
+	void aggregate_appliesTheDetailsFilterLikeSearch() {
+		AuditLogStats stats = service.aggregate(new AuditLogFilter(null, null, "u", null, null, false));
+
+		// u1, u2, u3 match; o1 does not.
+		assertThat(stats.total()).isEqualTo(3);
+		assertThat(stats.byEntityType()).containsExactly(new AuditLogCount("User", 3));
+	}
+
+	@Test
 	void search_appliesCreatedAtLowerBound() {
 		Instant future = Instant.now().plus(1, ChronoUnit.DAYS);
 

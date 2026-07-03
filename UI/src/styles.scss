@@ -1,1 +1,9 @@
 /* You can add global styles to this file, and also import other style files */
+
+body {
+  /* No default 8px ring — the sticky app header and full-bleed pages span edge to edge. */
+  margin: 0;
+  /* The audit page breaks out of the centered column with a 100vw-wide block; vw includes
+     the scrollbar, so clip the few leftover pixels instead of growing a horizontal scrollbar. */
+  overflow-x: clip;
+}

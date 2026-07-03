@@ -34,6 +34,7 @@ export class AuditService {
     let params = new HttpParams();
     if (filter.entityType) params = params.set('entityType', filter.entityType);
     if (filter.action) params = params.set('action', filter.action);
+    if (filter.details) params = params.set('details', filter.details);
     if (filter.from) params = params.set('from', filter.from);
     if (filter.to) params = params.set('to', filter.to);
     if (filter.includeDeleted) params = params.set('includeDeleted', true);

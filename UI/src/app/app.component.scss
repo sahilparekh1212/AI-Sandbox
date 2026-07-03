@@ -1,4 +1,9 @@
 .app-header {
+  // Stays pinned full-width while the page scrolls; the audit table's own sticky
+  // header offsets itself by this 56px so the two stack instead of overlapping.
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
   gap: 2rem;

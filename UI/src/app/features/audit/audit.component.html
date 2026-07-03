@@ -3,9 +3,24 @@
 
   <form class="filters" [formGroup]="filterForm" (ngSubmit)="applyFilters()">
     <label
-      >Entity type <input type="text" formControlName="entityType" placeholder="e.g. User"
-    /></label>
-    <label>Action <input type="text" formControlName="action" placeholder="e.g. LOGIN" /></label>
+      >Entity type
+      <select formControlName="entityType">
+        <option value="">All</option>
+        @for (t of entityTypeOptions(); track t) {
+          <option [value]="t">{{ t }}</option>
+        }
+      </select>
+    </label>
+    <label
+      >Action
+      <select formControlName="action">
+        <option value="">All</option>
+        @for (a of actionOptions(); track a) {
+          <option [value]="a">{{ a }}</option>
+        }
+      </select>
+    </label>
+    <label>Details <input type="text" formControlName="details" placeholder="contains…" /></label>
     <label>From <input type="datetime-local" formControlName="from" /></label>
     <label>To <input type="datetime-local" formControlName="to" /></label>
     <label class="checkbox"

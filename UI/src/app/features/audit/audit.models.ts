@@ -37,6 +37,7 @@ export interface AuditLogStats {
 export interface AuditLogFilter {
   entityType?: string | null;
   action?: string | null;
+  details?: string | null; // case-insensitive substring match
   from?: string | null; // ISO instant
   to?: string | null;
   includeDeleted?: boolean;
