@@ -145,6 +145,12 @@ services:
       # keeps refresh working across both replicas (see ADR-0007).
       AUTH_REFRESH_TOKEN_STORE: redis
       REDIS_HOST: redis
+      # Behind the UI's nginx proxy, Spring must build external URLs (the Google OAuth
+      # redirect_uri) from X-Forwarded-Host/Proto/Prefix, not from the proxied request line —
+      # otherwise the redirect_uri comes out as http://localhost/login/... (port and /auth-api
+      # prefix both lost). Set here rather than in application.properties so trusting
+      # X-Forwarded-* stays scoped to this deployment, where nginx is the one setting them.
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
       # Real Google sign-in is opt-in — pass these through from the host env if set; the demo
       # login (see the header comment above) works without them. The fallbacks must be the same
       # non-empty placeholders application.properties uses, not empty strings: an env var that
@@ -166,11 +172,13 @@ services:
   # frontend origin (CORS_ALLOWED_ORIGINS / FRONTEND_URL both say http://localhost:4200). The
   # production bundle calls same-origin /auth-api and /audit-api paths, which nginx proxies to
   # auth/audit inside the network (see UI/nginx.conf) — so browser → API needs no CORS at all.
-  # Demo login (demo/demo) works end-to-end out of the box. Caveat: the opt-in *Google* sign-in
-  # navigates through the /auth-api proxy, so Spring derives the OAuth redirect_uri from the
-  # proxied request — registering http://localhost:8085's callback in the Google console (the
-  # direct, documented setup) won't match through this path; use the demo login here, or hit
-  # Auth directly on :8085 for the real-IdP flow.
+  # Demo login (demo/demo) works end-to-end out of the box. For the opt-in *Google* sign-in
+  # (runs through the /auth-api proxy; auth honors the proxy's X-Forwarded-* headers — see
+  # SERVER_FORWARD_HEADERS_STRATEGY on the auth service), two host-side steps are needed:
+  # export real GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET before `docker compose up`, and add
+  #   http://localhost:4200/auth-api/login/oauth2/code/google
+  # as an authorized redirect URI of that client in the Google Cloud console. Without them the
+  # Google button lands on Google's "Error 401: invalid_client" page (placeholder client id).
   ui:
     build:
       context: ../UI

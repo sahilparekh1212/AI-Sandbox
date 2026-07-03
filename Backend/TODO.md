@@ -41,10 +41,20 @@ needs.
       browser never needs CORS on this path. Hashed bundles get immutable cache headers,
       `index.html` gets `no-cache`. A `ui` service in `Backend/docker-compose.yml` publishes it on
       host `:4200` — the origin `CORS_ALLOWED_ORIGINS`/`FRONTEND_URL` already assumed — so demo
-      login + audit dashboard work end-to-end out of one `docker compose up --build`. One honest
-      caveat documented in the compose file: opt-in *Google* sign-in navigates through the proxy,
-      so its Spring-derived `redirect_uri` won't match the direct-`:8085` Google-console setup —
-      demo login is the in-container path. The "(optional) make Frontend CI a required
+      login + audit dashboard work end-to-end out of one `docker compose up --build`. Follow-up
+      fix after a real click-through: the *Google* sign-in path 401'd — with placeholder creds
+      that's Google's expected `invalid_client`, but the proxied flow was also genuinely broken:
+      the Spring-derived `redirect_uri` came out as `http://localhost/login/oauth2/code/google` —
+      port dropped (nginx passed `$host`, which strips it) *and* `/auth-api` prefix missing
+      (Spring ignored `X-Forwarded-Prefix` without a forward-headers strategy). Fixed with
+      `Host`/`X-Forwarded-Host: $http_host` in nginx (explicitly not `$server_port`, which is the
+      container's internal 80, not the published 4200) + `SERVER_FORWARD_HEADERS_STRATEGY=framework`
+      on the auth compose service (env-scoped so trusting `X-Forwarded-*` stays limited to the
+      deployment where nginx sets them). Verified: the authorize redirect now carries
+      `redirect_uri=http://localhost:4200/auth-api/login/oauth2/code/google`. Real Google sign-in
+      through the container additionally needs (host-side, documented in the compose header): real
+      `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` exported, and that exact redirect URI added to the
+      OAuth client in the Google Cloud console. The "(optional) make Frontend CI a required
       branch-protection check" tail was deliberately not done: `Frontend CI` only triggers on
       `UI/**`, so making it required would leave backend-only PRs permanently un-mergeable unless
       its path filters were broadened to everything (the same asymmetry the backend checks solved
