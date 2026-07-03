@@ -39,4 +39,25 @@ describe('AuditService', () => {
     expect(req.request.params.get('action')).toBe('LOGIN');
     req.flush({ total: 0, byAction: [], byEntityType: [] });
   });
+
+  it('sends the details substring filter and omits it when unset', () => {
+    service
+      .search({ details: 'report' }, { page: 0, size: 20, sort: 'createdAt,desc' })
+      .subscribe();
+    const withDetails = httpMock.expectOne((r) => r.url === `${base}/search`);
+    expect(withDetails.request.params.get('details')).toBe('report');
+    withDetails.flush({
+      content: [],
+      page: 0,
+      size: 20,
+      totalElements: 0,
+      totalPages: 0,
+      last: true,
+    });
+
+    service.search({}, { page: 0, size: 20, sort: 'createdAt,desc' }).subscribe();
+    const without = httpMock.expectOne((r) => r.url === `${base}/search`);
+    expect(without.request.params.has('details')).toBeFalse();
+    without.flush({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, last: true });
+  });
 });

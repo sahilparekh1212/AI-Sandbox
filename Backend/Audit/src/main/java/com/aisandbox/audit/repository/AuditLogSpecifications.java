@@ -34,6 +34,10 @@ public final class AuditLogSpecifications {
 			if (StringUtils.hasText(filter.action())) {
 				predicates.add(cb.equal(root.get("action"), filter.action()));
 			}
+			if (StringUtils.hasText(filter.details())) {
+				predicates.add(cb.like(cb.lower(root.get("details")),
+					"%" + escapeLike(filter.details().toLowerCase()) + "%", '\\'));
+			}
 			if (filter.from() != null) {
 				predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), filter.from()));
 			}
@@ -42,5 +46,13 @@ public final class AuditLogSpecifications {
 			}
 			return cb.and(predicates.toArray(Predicate[]::new));
 		};
+	}
+
+	/**
+	 * A user searching for a literal {@code %}, {@code _} or {@code \} must not have it
+	 * act as a LIKE wildcard, so escape them with the explicit escape character above.
+	 */
+	private static String escapeLike(String value) {
+		return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
 	}
 }

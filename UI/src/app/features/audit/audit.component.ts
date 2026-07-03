@@ -20,6 +20,7 @@ export class AuditComponent implements OnInit {
   readonly filterForm = this.fb.nonNullable.group({
     entityType: [''],
     action: [''],
+    details: [''],
     from: [''],
     to: [''],
     includeDeleted: [false],
@@ -29,6 +30,14 @@ export class AuditComponent implements OnInit {
   readonly stats = signal<AuditLogStats | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+
+  // Dropdown options are the union of every stats bucket key seen so far — the unfiltered
+  // initial load seeds the full set, and later (narrower) stats responses can only add,
+  // never remove, so picking a filter doesn't make the other options disappear.
+  private readonly seenEntityTypes = new Set<string>();
+  private readonly seenActions = new Set<string>();
+  readonly entityTypeOptions = signal<string[]>([]);
+  readonly actionOptions = signal<string[]>([]);
 
   readonly page = signal(0);
   readonly size = signal(20);
@@ -92,9 +101,19 @@ export class AuditComponent implements OnInit {
       });
 
     this.audit.stats(filter).subscribe({
-      next: (stats) => this.stats.set(stats),
+      next: (stats) => {
+        this.stats.set(stats);
+        this.mergeOptions(stats);
+      },
       error: () => this.stats.set(null),
     });
+  }
+
+  private mergeOptions(stats: AuditLogStats): void {
+    stats.byEntityType.forEach((b) => this.seenEntityTypes.add(b.key));
+    stats.byAction.forEach((b) => this.seenActions.add(b.key));
+    this.entityTypeOptions.set([...this.seenEntityTypes].sort());
+    this.actionOptions.set([...this.seenActions].sort());
   }
 
   private sortParam(): string {
@@ -106,6 +125,7 @@ export class AuditComponent implements OnInit {
     return {
       entityType: v.entityType || null,
       action: v.action || null,
+      details: v.details.trim() || null,
       // datetime-local yields local "YYYY-MM-DDTHH:mm"; the API wants an ISO instant.
       from: v.from ? new Date(v.from).toISOString() : null,
       to: v.to ? new Date(v.to).toISOString() : null,

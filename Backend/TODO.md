@@ -60,6 +60,22 @@ needs.
       its path filters were broadened to everything (the same asymmetry the backend checks solved
       in reverse) — noting it here instead of half-doing it.
 
+- [x] **Audit screen UX round 2 — filter dropdowns, details search, sticky header.** Entity type
+      and Action filters are now `<select>` dropdowns instead of free-text — options are the
+      accumulated union of every `/stats` bucket key seen so far (the unfiltered initial load
+      seeds the full set; narrower stats responses only ever *add*, so applying a filter doesn't
+      make the other options vanish — and no hardcoded enum list to drift from the data). New
+      **Details "contains" filter**: `details` param on `/search` + `/stats`, implemented in
+      `AuditLogSpecifications` as a case-insensitive `LIKE '%…%'` with explicit `\`-escaping of
+      `%`/`_`/`\` so a user searching a literal `100%` doesn't trigger wildcard expansion
+      (integration-tested: substring match, case-insensitivity, `_`-as-literal, and that
+      `aggregate()` honours it identically to `search()`). Layout: app header is now
+      `position: sticky` (full-width — `body{margin:0}` also killed the default 8px white ring),
+      the audit table's column headers stick just below it (`top: 56px`, solid bg + shadow), and
+      the audit page breaks out of `.app-main`'s centered 1100px column to full viewport width
+      (`margin-inline: calc(50% - 50vw)` + `overflow-x: clip` on body for the scrollbar-width
+      overhang).
+
 ### Backend seams the UI depends on (do these before/with the UI)
 - [x] **CORS — implemented.** Both services now configure CORS in `SecurityConfig` via
       `CORS_ALLOWED_ORIGINS` (default `http://localhost:4200`), so an Angular SPA on `:4200` can

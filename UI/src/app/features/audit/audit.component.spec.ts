@@ -63,6 +63,42 @@ describe('AuditComponent', () => {
     expect(component.stats()?.total).toBe(1);
   });
 
+  it('populates the dropdown options from the stats buckets and never shrinks them', () => {
+    flushInitialLoad();
+    expect(component.entityTypeOptions()).toEqual(['User']);
+    expect(component.actionOptions()).toEqual(['LOGIN']);
+
+    // A narrower stats response (filter applied) adds new keys but drops none.
+    component.applyFilters();
+    httpMock
+      .expectOne((r) => r.url === `${base}/search`)
+      .flush({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, last: true });
+    httpMock
+      .expectOne((r) => r.url === `${base}/stats`)
+      .flush({
+        total: 1,
+        byAction: [{ key: 'CREATE', count: 1 }],
+        byEntityType: [{ key: 'Order', count: 1 }],
+      });
+
+    expect(component.entityTypeOptions()).toEqual(['Order', 'User']);
+    expect(component.actionOptions()).toEqual(['CREATE', 'LOGIN']);
+  });
+
+  it('sends the details filter as a query param when set', () => {
+    flushInitialLoad();
+    component.filterForm.patchValue({ details: '  sales report ' });
+    component.applyFilters();
+
+    const search = httpMock.expectOne((r) => r.url === `${base}/search`);
+    expect(search.request.params.get('details')).toBe('sales report'); // trimmed
+    search.flush({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, last: true });
+
+    const stats = httpMock.expectOne((r) => r.url === `${base}/stats`);
+    expect(stats.request.params.get('details')).toBe('sales report');
+    stats.flush({ total: 0, byAction: [], byEntityType: [] });
+  });
+
   it('toggles sort direction when the same column is clicked twice', () => {
     flushInitialLoad();
     component.sortBy('createdAt'); // was default createdAt/desc → asc

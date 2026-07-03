@@ -1,3 +1,11 @@
+// Break out of .app-main's centered 1100px column so the audit table gets the full
+// viewport width: pull both margins to the viewport edge, then restore the page gutter.
+:host {
+  display: block;
+  margin-inline: calc(50% - 50vw);
+  padding-inline: 1.5rem;
+}
+
 .audit {
   .filters {
     display: flex;
@@ -20,10 +28,12 @@
       }
     }
 
-    input {
+    input,
+    select {
       padding: 0.4rem;
       border: 1px solid #d1d5db;
       border-radius: 6px;
+      background: #fff;
     }
 
     button {
@@ -97,6 +107,17 @@
       text-align: left;
       padding: 0.5rem 0.6rem;
       border-bottom: 1px solid #eef0f3;
+    }
+
+    // Column headers stay visible while the rows scroll, parked just below the sticky
+    // 56px app header. Solid background + shadow so rows don't show through the gap
+    // (the border-bottom doesn't travel with a sticky cell).
+    thead th {
+      position: sticky;
+      top: 56px;
+      z-index: 5;
+      background: #fff;
+      box-shadow: 0 1px 0 #e5e7eb;
     }
 
     th.sortable {

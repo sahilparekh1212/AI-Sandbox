@@ -60,15 +60,17 @@ public class AuditLogController {
 
 	@GetMapping("/search")
 	@Operation(summary = "Paginated, filtered, sorted search over audit logs "
-		+ "(filters: entityType, action, createdAt range; sortable: createdAt, entityType, action, id)")
+		+ "(filters: entityType, action, details substring, createdAt range; "
+		+ "sortable: createdAt, entityType, action, id)")
 	public PagedResponse<AuditLog> search(
 			@RequestParam(required = false) String entityType,
 			@RequestParam(required = false) String action,
+			@RequestParam(required = false) String details,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
 			@RequestParam(defaultValue = "false") boolean includeDeleted,
 			@PageableDefault(size = 20) Pageable pageable) {
-		AuditLogFilter filter = new AuditLogFilter(entityType, action, from, to, includeDeleted);
+		AuditLogFilter filter = new AuditLogFilter(entityType, action, details, from, to, includeDeleted);
 		log.info("Searching audit logs filter={} page={} size={}", filter, pageable.getPageNumber(),
 			pageable.getPageSize());
 		return PagedResponse.from(auditLogService.search(filter, pageable));
@@ -79,10 +81,11 @@ public class AuditLogController {
 	public AuditLogStats stats(
 			@RequestParam(required = false) String entityType,
 			@RequestParam(required = false) String action,
+			@RequestParam(required = false) String details,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
 			@RequestParam(defaultValue = "false") boolean includeDeleted) {
-		AuditLogFilter filter = new AuditLogFilter(entityType, action, from, to, includeDeleted);
+		AuditLogFilter filter = new AuditLogFilter(entityType, action, details, from, to, includeDeleted);
 		log.info("Aggregating audit logs filter={}", filter);
 		return auditLogService.aggregate(filter);
 	}
