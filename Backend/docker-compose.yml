@@ -146,9 +146,12 @@ services:
       AUTH_REFRESH_TOKEN_STORE: redis
       REDIS_HOST: redis
       # Real Google sign-in is opt-in — pass these through from the host env if set; the demo
-      # login (see the header comment above) works without them.
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # login (see the header comment above) works without them. The fallbacks must be the same
+      # non-empty placeholders application.properties uses, not empty strings: an env var that
+      # exists-but-is-empty overrides Spring's own ${GOOGLE_CLIENT_ID:your-client-id} default and
+      # fails OAuth2ClientProperties validation ("Client id ... must not be empty") at startup.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-your-client-id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-your-client-secret}
     ports:
       - "8085:8085"
     depends_on:
