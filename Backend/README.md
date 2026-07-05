@@ -23,6 +23,22 @@ Non-obvious design tradeoffs (why RSA over HMAC, why the refresh-token store mov
 Auth stateless — and why the rate limiter stays per-pod, why H2 in tests, why Liquibase owns the
 schema) are written up in [`docs/adr/`](docs/adr/README.md).
 
+### LLM chat assistant
+
+The Audit service also hosts `POST /api/v1/assistant/chat` — a server-side proxy that lets the
+SPA's Assistant page ask a Claude model questions about the application, grounded on an app
+overview doc plus live audit data. Enable it by exporting `ANTHROPIC_API_KEY` before starting
+the Audit service (or `docker compose up`); without a key the endpoint returns 503 and nothing
+else is affected. Model and output size are tunable via `ASSISTANT_MODEL` (default
+`claude-opus-4-8`; use `claude-haiku-4-5` for cost) and `ASSISTANT_MAX_TOKENS`.
+
+Access is role-aware: every signed-in user chats against aggregate statistics only, while
+`ROLE_ADMIN` answers are additionally grounded on the 20 most recent raw audit rows. Inbound
+messages are screened server-side (JWT/token shapes, credential assignments, emails, card-like
+numbers are refused locally and never forwarded), auth headers are never proxied, and the
+provider data-flow is documented in
+[ADR-0009](docs/adr/0009-llm-chat-assistant-data-flow.md).
+
 ---
 
 ## Prerequisites

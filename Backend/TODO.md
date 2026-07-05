@@ -2,26 +2,6 @@
 
 ## Open roadmap (prioritized)
 
-### Feature: "LLM Chat" — ask the app about itself
-- [ ] **LLM Chat feature.** A chat page in the SPA where a user asks questions about the
-      application ("what does the audit service do?", "how do I sign in?", "what actions were
-      most frequent today?") and an LLM answers, grounded on the app's own docs (README, ADRs)
-      and — optionally, phase 2 — read-only *aggregate* data via the existing `/stats` endpoint.
-      Architecture: a thin **server-side proxy endpoint** (new `Assistant` controller; the SPA
-      never talks to the LLM provider directly) calling the Claude API (Messages API;
-      `claude-sonnet-5`, or `claude-haiku-4-5` for cost) with the docs as context; API key lives
-      in server env/secret only. **Sensitive-data guardrails are a hard requirement:**
-      (1) the proxy never forwards `Authorization` headers, JWTs, or cookies to the provider;
-      (2) inbound messages are screened server-side before the provider call — reject/redact
-      token-shaped strings (JWT `eyJ…` patterns), credential keywords, and PII patterns (emails,
-      card-like numbers), returning a "can't help with credentials/personal data" message rather
-      than forwarding; (3) tool/data access is allowlisted to *aggregate* endpoints only — the
-      assistant can see counts by action/entityType, never raw audit rows (whose `details` may
-      carry user identifiers); (4) retrieved/tool content is treated as data, not instructions
-      (prompt-injection posture documented); (5) chat requests are rate-limited per user (reuse
-      the ratelimit module) and logged with the same redaction rules. Document the data-flow
-      (what can/cannot reach the provider) in an ADR — that writeup is itself interview material.
-
 ### CI/CD roadmap (highest interview value for a fullstack role, in order)
 - [ ] **Playwright E2E suite against the compose stack.** The biggest remaining gap: nothing
       exercises browser → nginx → Auth → Kafka → Audit → Postgres as one system. CI job:
@@ -42,6 +22,32 @@
 - [ ] **SBOM (syft) + image signing (cosign).** Cheap to bolt onto the existing Trivy jobs;
       "SBOM/SLSA/provenance" is the current supply-chain vocabulary that distinguishes senior
       candidates, and this repo already has the scanning half of that story.
+
+### Feature: "LLM Chat" — DONE
+- [x] **LLM Chat feature — implemented, with role-based data access.** New `assistant/` package
+      in Audit: `POST /api/v1/assistant/chat` is a thin server-side proxy calling the Claude API
+      via the **official Anthropic Java SDK** (Spring AI considered and rejected — one call site,
+      and the hard requirement is knowing exactly which bytes leave for the provider; the
+      abstraction earns nothing here). API key is server-env only (`ANTHROPIC_API_KEY`; endpoint
+      503s cleanly without it). All five guardrails from this item's spec landed: (1) no auth
+      headers/JWTs/cookies can reach the provider *by construction* — the outbound request is
+      built solely from screened text + a server-assembled system prompt; (2) `PromptScreener`
+      rejects JWT `eyJ…`/Bearer shapes, credential *assignments* (asking about passwords passes),
+      emails, and card-like numbers with a canned local reply, and re-screens replayed history
+      since the client isn't trusted; (3) data access is allowlisted in one class
+      (`AssistantContextBuilder`) — **extended beyond the original aggregate-only plan with RBAC**:
+      ROLE_USER gets docs + aggregate stats, ROLE_ADMIN additionally the 20 most recent raw rows
+      (role from the verified JWT, gate in the context builder not the prompt); (4) retrieved data
+      is tag-wrapped and declared non-instructional (prompt-injection posture); (5) the existing
+      newest-wins rate limiter covers the endpoint automatically, and logs carry violation
+      category + lengths only. Data-flow ADR:
+      [ADR-0009](docs/adr/0009-llm-chat-assistant-data-flow.md). UI: guarded `/assistant` chat
+      page (client-held history, blocked replies rendered distinctly, 503 → "not configured"
+      hint). Tested at every seam: screener rules, service orchestration, role gating, MockMvc
+      security e2e with the provider mocked at the `LlmClient` interface, SDK request assembly
+      with a mocked `AnthropicClient`; 90% coverage gate held. Not exercised against the live
+      Claude API here (no key in this environment) — first real smoke: export `ANTHROPIC_API_KEY`,
+      `docker compose up --build`, ask the Assistant page a question as both roles.
 
 Findings
 
