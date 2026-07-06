@@ -1,0 +1,44 @@
+<section class="assistant">
+  <h1>Assistant</h1>
+  <p class="hint">
+    Ask about this application — its features, how to sign in, or what the audit data shows.
+    Messages are screened server-side; don't paste credentials or personal data.
+  </p>
+
+  <div class="chat-log" #log>
+    @if (turns().length === 0) {
+      <p class="empty">
+        Try: <em>“What does the audit service do?”</em> or
+        <em>“Which actions were most frequent?”</em>
+      </p>
+    }
+    @for (turn of turns(); track $index) {
+      <div class="turn" [class.user]="turn.role === 'user'" [class.blocked]="turn.blocked">
+        <span class="who">{{ turn.role === 'user' ? 'You' : 'Assistant' }}</span>
+        <p class="bubble">{{ turn.content }}</p>
+      </div>
+    }
+    @if (busy()) {
+      <div class="turn">
+        <span class="who">Assistant</span>
+        <p class="bubble thinking">Thinking…</p>
+      </div>
+    }
+  </div>
+
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+
+  <form class="composer" (ngSubmit)="send()">
+    <input
+      type="text"
+      [formControl]="input"
+      placeholder="Ask a question about this app…"
+      maxlength="2000"
+      [attr.disabled]="busy() ? '' : null"
+      aria-label="Message"
+    />
+    <button type="submit" [disabled]="busy() || !input.value.trim()">Send</button>
+  </form>
+</section>

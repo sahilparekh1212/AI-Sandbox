@@ -208,6 +208,9 @@ services:
       # Auth's JWKS endpoint, so Audit can verify JWTs Auth issued. DEV's own default assumes a
       # host named "auth-service"; this compose file's service is named "auth", so it's overridden.
       AUTH_JWK_SET_URI: http://auth:8085/.well-known/jwks.json
+      # LLM chat assistant. Export ANTHROPIC_API_KEY on the host to enable it; with no key the
+      # assistant endpoint returns 503 and the rest of the app is unaffected.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       - "8083:8083"
     depends_on:

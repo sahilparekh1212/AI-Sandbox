@@ -3,6 +3,7 @@
   <nav>
     <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
     <a routerLink="/audit" routerLinkActive="active">Audit</a>
+    <a routerLink="/assistant" routerLinkActive="active">Assistant</a>
     @if (isAuthenticated()) {
       <a routerLink="/profile" routerLinkActive="active">Profile</a>
     } @else {

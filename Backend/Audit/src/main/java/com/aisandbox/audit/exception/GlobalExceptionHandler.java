@@ -87,6 +87,18 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorBody(400, "Bad Request", message));
 	}
 
+	/**
+	 * The LLM assistant can't serve the request — no API key configured, or the provider call
+	 * failed. 503 tells the client this is a server-side availability problem, not a bad request.
+	 */
+	@ExceptionHandler(com.aisandbox.audit.assistant.AssistantUnavailableException.class)
+	public ResponseEntity<Map<String, Object>> handleAssistantUnavailable(
+			com.aisandbox.audit.assistant.AssistantUnavailableException ex) {
+		logException(ex);
+		return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+			.body(errorBody(503, "Service Unavailable", ex));
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Map<String, Object>> handleAll(Exception ex) {
 		// A superseded (rate-limited) request can fail mid-work because the "newest wins" limiter
