@@ -3,18 +3,18 @@
 ## Open roadmap (prioritized)
 
 ### Product/UI roadmap (portfolio presentation)
-- [ ] **GitHub-like dark theme UI restyle.** Give the SPA a cohesive dark theme modelled on
-      GitHub's Primer palette (canvas `#0d1117`, borders `#30363d`, accent `#2f81f7`, etc.),
-      hand-rolled with global CSS custom properties rather than a UI framework — no Bootstrap
-      dependency, full control, GitHub-authentic look, small bundle. One design-token layer in
-      `styles.scss` consumed by every component (header/nav, home, login, profile, audit table +
-      stat bars, assistant chat, auth-callback). Keep unit tests/lint/prettier/prod build green.
-- [ ] **Home page — explain the project (tech stack, design, features, why & how).** Replace the
-      thin two-card home with real portfolio content: a tech-stack overview, the key design
-      decisions (and *why* each — event-driven audit, RBAC JWTs, stateless services, rate
-      limiting, observability, the LLM proxy) and *how* they're implemented, plus a feature tour
-      with links into the app and the ADRs. This is the first thing a reviewer sees; it should
-      read like the README's pitch, in-app.
+- [x] **GitHub-like dark theme UI restyle — implemented (PR #49).** One design-token layer in
+      `styles.scss` (GitHub Primer dark palette as CSS custom properties: canvas `#0d1117`,
+      borders `#30363d`, accent `#2f81f7`, plus text/status/button tokens) with base element
+      defaults, hand-rolled with no UI framework. Every component (header/nav, home, login,
+      profile, audit table + stat bars, assistant chat) converted from hardcoded light colors to
+      the tokens — change a value in one place and it flows everywhere. Lint/prettier/unit
+      tests/prod build green.
+- [x] **Home page — implemented (PR #50).** Replaced the thin two-card home with data-driven
+      portfolio content: a tech-stack overview grouped by area, six design decisions each with an
+      explicit *Why* and *How* (event-driven audit, RBAC JWTs, statelessness, rate limiting,
+      observability, the guarded LLM proxy) with a pointer to the ADRs, and a feature tour linking
+      into the app. Rendered from typed arrays; specs assert the content and the why/how pairing.
 - [x] **Flashcards feature — implemented.** `POST /api/v1/assistant/flashcards` generates a
       Q&A study deck about the app via the same Claude proxy, reusing the assistant seams rather
       than duplicating them: same `LlmClient` (server-side key, no auth headers forwarded) and
