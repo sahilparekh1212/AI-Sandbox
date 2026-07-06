@@ -66,11 +66,23 @@
       report uploads as an artifact. Deliberately not a required branch-protection check — its
       path filters only cover system-affecting paths, the same never-triggers asymmetry the
       Frontend CI item documented.
-- [ ] **API contract gate (openapi-diff).** Generate each service's OpenAPI spec in CI and fail
-      the PR on breaking changes vs `main`'s spec. Demonstrates treating the UI↔API seam as a
-      versioned contract (Pact is the heavier alternative; openapi-diff is 80% of the story for
-      20% of the effort — and the repo already URI/header-versions its APIs, so this completes
-      that narrative).
+- [x] **API contract gate (openapi-diff) — implemented.** New `API contract` workflow
+      (`.github/workflows/api-contract.yml`, PR-only — on a push to `main` there is no base
+      contract to compare against): checks out the PR head *and* the base branch side-by-side,
+      generates all four specs with `.github/scripts/generate-openapi-specs.sh` (boots each
+      service on the LOCAL profile and fetches springdoc's `/v3/api-docs` — the spec comes from
+      the running code, so it can't drift), then `openapitools/openapi-diff` fails the job on
+      breaking changes only (`--fail-on-incompatible`; additive changes pass), with the diff
+      rendered into the job summary. Both diffs always run so a PR breaking both contracts reports
+      both at once. Two real findings along the way: (1) **Audit's `/v3/api-docs` had been 500ing
+      in every environment** — the Anthropic SDK's classic (javax) `swagger-annotations` jar
+      defines the same classes as springdoc's `swagger-annotations-jakarta`, and the older copy
+      winning classloading broke springdoc with `NoSuchMethodError: Schema.$dynamicRef()`; fixed
+      by excluding the duplicate (own PR, verified against the running compose stack). (2)
+      openapi-diff's parser reads OpenAPI 3.0 but springdoc emits 3.1 by default — the script
+      sets `SPRINGDOC_API_DOCS_VERSION=openapi_3_0` for the generated comparison specs only, so
+      the running services keep serving 3.1. Whole pipeline validated locally end-to-end (boot →
+      fetch → docker-run diff → "No differences") before it ever ran in CI.
 - [ ] **CD: versioned images to GHCR on merge to `main`.** Build once, tag SemVer + git SHA,
       push to GitHub Container Registry; compose gets a variant that pulls instead of builds.
       Closes the "CI but no CD" gap and makes release engineering a first-class talking point.
