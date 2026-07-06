@@ -2,6 +2,35 @@
 
 ## Open roadmap (prioritized)
 
+### Product/UI roadmap (portfolio presentation)
+- [ ] **GitHub-like dark theme UI restyle.** Give the SPA a cohesive dark theme modelled on
+      GitHub's Primer palette (canvas `#0d1117`, borders `#30363d`, accent `#2f81f7`, etc.),
+      hand-rolled with global CSS custom properties rather than a UI framework — no Bootstrap
+      dependency, full control, GitHub-authentic look, small bundle. One design-token layer in
+      `styles.scss` consumed by every component (header/nav, home, login, profile, audit table +
+      stat bars, assistant chat, auth-callback). Keep unit tests/lint/prettier/prod build green.
+- [ ] **Home page — explain the project (tech stack, design, features, why & how).** Replace the
+      thin two-card home with real portfolio content: a tech-stack overview, the key design
+      decisions (and *why* each — event-driven audit, RBAC JWTs, stateless services, rate
+      limiting, observability, the LLM proxy) and *how* they're implemented, plus a feature tour
+      with links into the app and the ADRs. This is the first thing a reviewer sees; it should
+      read like the README's pitch, in-app.
+- [ ] **Flashcards feature — LLM-generated study deck about the app.** A page that asks the
+      Claude proxy (reuse the assistant infrastructure) to generate a deck of Q&A flashcards
+      explaining this application's architecture and features — an interview-prep study tool.
+      Backend: a new endpoint returning a structured deck (JSON, via a strict output schema),
+      grounded on the same app-context doc, behind the same guardrails and RBAC posture as the
+      chat assistant (server-side key, no auth headers forwarded, role-scoped context). UI: a
+      flip-card deck with next/prev/shuffle. Tests + 90% coverage gate; document the reuse in the
+      assistant ADR or a short follow-up note.
+
+### Ops roadmap
+- [ ] **End-to-end deployment plan.** A concrete, written plan to deploy the whole app (SPA + Auth
+      + Audit + Kafka + Postgres + Redis + observability) end to end: image registry (GHCR),
+      environment/config/secret management, database and broker provisioning, the OpenShift
+      manifests already in `openshift/`, the CI→CD promotion flow, rollout/rollback strategy, and
+      DNS/TLS/ingress. A design doc (`docs/deployment.md`), not necessarily executed here.
+
 ### CI/CD roadmap (highest interview value for a fullstack role, in order)
 - [ ] **Playwright E2E suite against the compose stack.** The biggest remaining gap: nothing
       exercises browser → nginx → Auth → Kafka → Audit → Postgres as one system. CI job:
