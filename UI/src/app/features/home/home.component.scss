@@ -68,6 +68,26 @@
   }
 }
 
+.decision-group {
+  margin-top: 1.5rem;
+
+  &:first-of-type {
+    margin-top: 0.5rem;
+  }
+
+  .group-heading {
+    margin: 0 0 0.15rem;
+    font-size: 1.05rem;
+    color: var(--accent);
+  }
+
+  .group-blurb {
+    margin: 0 0 0.85rem;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+  }
+}
+
 .decisions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -80,9 +100,9 @@
   border-radius: var(--radius);
   padding: 1rem 1.25rem;
 
-  h3 {
+  h4 {
     margin: 0 0 0.6rem;
-    font-size: 1.05rem;
+    font-size: 1.02rem;
   }
 
   p {

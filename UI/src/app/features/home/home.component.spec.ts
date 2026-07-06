@@ -22,21 +22,33 @@ describe('HomeComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('renders the tech-stack groups and design decisions', () => {
+  it('renders the tech-stack, and the grouped decisions covering stack, patterns, data and CI/CD', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Tech stack');
     expect(text).toContain('Spring Boot 3');
     expect(text).toContain('Design decisions');
-    expect(text).toContain('Event-driven audit trail');
+    // one heading per required theme
+    const headings = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.group-heading'),
+    ).map((h) => h.textContent ?? '');
+    expect(headings.some((h) => h.includes('Tech stack'))).toBeTrue();
+    expect(headings.some((h) => h.includes('Design patterns'))).toBeTrue();
+    expect(headings.some((h) => h.includes('Liquibase'))).toBeTrue();
+    expect(headings.some((h) => h.includes('CI / CD'))).toBeTrue();
+    // representative content actually rendered
+    expect(text).toContain('Event-driven audit');
+    expect(text).toContain('Liquibase owns the schema');
+    expect(text).toContain('coverage gate');
   });
 
-  it('shows a why and a how for every design decision', () => {
+  it('shows a why and a how for every decision across all groups', () => {
     const el = fixture.nativeElement as HTMLElement;
+    const total = component.decisionGroups.reduce((n, g) => n + g.items.length, 0);
     const tags = Array.from(el.querySelectorAll('.decision .tag')).map((t) =>
       t.textContent?.trim(),
     );
-    expect(tags.filter((t) => t === 'Why').length).toBe(component.decisions.length);
-    expect(tags.filter((t) => t === 'How').length).toBe(component.decisions.length);
+    expect(tags.filter((t) => t === 'Why').length).toBe(total);
+    expect(tags.filter((t) => t === 'How').length).toBe(total);
   });
 
   it('links each feature that declares a route into the app', () => {
