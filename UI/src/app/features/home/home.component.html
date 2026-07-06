@@ -28,17 +28,23 @@
   </div>
 
   <h2 class="section-title">Design decisions — the why &amp; how</h2>
-  <div class="decisions">
-    @for (d of decisions; track d.title) {
-      <article class="decision">
-        <h3>{{ d.title }}</h3>
-        <p><span class="tag">Why</span>{{ d.why }}</p>
-        <p><span class="tag">How</span>{{ d.how }}</p>
-      </article>
-    }
-  </div>
+  @for (group of decisionGroups; track group.heading) {
+    <div class="decision-group">
+      <h3 class="group-heading">{{ group.heading }}</h3>
+      <p class="group-blurb">{{ group.blurb }}</p>
+      <div class="decisions">
+        @for (d of group.items; track d.title) {
+          <article class="decision">
+            <h4>{{ d.title }}</h4>
+            <p><span class="tag">Why</span>{{ d.why }}</p>
+            <p><span class="tag">How</span>{{ d.how }}</p>
+          </article>
+        }
+      </div>
+    </div>
+  }
   <p class="footnote">
-    Each of these is written up as an Architecture Decision Record in the repository's
+    Many of these are written up as Architecture Decision Records in the repository's
     <code>Backend/docs/adr/</code> — what was chosen, what else was considered, and the tradeoff.
   </p>
 
