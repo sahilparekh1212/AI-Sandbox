@@ -1,4 +1,48 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global styles + the single design-token layer every component consumes.
+   Dark theme modelled on GitHub's Primer palette — hand-rolled with CSS custom
+   properties, no UI framework. Change a value here and it flows everywhere. */
+
+:root {
+  /* Surfaces (darkest → lightest) */
+  --canvas: #0d1117; /* page background */
+  --canvas-inset: #010409; /* header, deepest wells */
+  --canvas-subtle: #161b22; /* cards, panels, table header */
+  --canvas-overlay: #1c2128; /* hovered rows, raised controls */
+
+  /* Borders */
+  --border: #30363d;
+  --border-muted: #21262d;
+
+  /* Text */
+  --fg: #e6edf3; /* default */
+  --fg-muted: #7d8590; /* secondary / captions */
+  --fg-subtle: #6e7681; /* placeholders, disabled */
+
+  /* Accent (links, primary actions) */
+  --accent: #2f81f7;
+  --accent-emphasis: #1f6feb;
+  --accent-fg: #ffffff;
+
+  /* Status */
+  --success: #3fb950;
+  --danger: #f85149;
+  --danger-subtle: rgba(248, 81, 73, 0.12);
+
+  /* Neutral button */
+  --btn-bg: #21262d;
+  --btn-hover: #30363d;
+  --btn-fg: var(--fg);
+
+  --radius: 6px;
+  --shadow: 0 8px 24px rgba(1, 4, 9, 0.5);
+
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+html {
+  color-scheme: dark;
+}
 
 body {
   /* No default 8px ring — the sticky app header and full-bleed pages span edge to edge. */
@@ -6,4 +50,86 @@ body {
   /* The audit page breaks out of the centered column with a 100vw-wide block; vw includes
      the scrollbar, so clip the few leftover pixels instead of growing a horizontal scrollbar. */
   overflow-x: clip;
+  background: var(--canvas);
+  color: var(--fg);
+  font-family: var(--font);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+h1,
+h2,
+h3 {
+  color: var(--fg);
+  line-height: 1.25;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--canvas-subtle);
+  border: 1px solid var(--border-muted);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+}
+
+/* Shared form-control + button baselines so components only override specifics. */
+input,
+select,
+textarea {
+  background: var(--canvas-inset);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+
+  &::placeholder {
+    color: var(--fg-subtle);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.3);
+  }
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  padding: 0.45rem 0.9rem;
+
+  &:hover:not(:disabled) {
+    background: var(--btn-hover);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+/* Primary (accent) button — opt in with class="primary". */
+button.primary {
+  background: var(--accent-emphasis);
+  border-color: var(--accent-emphasis);
+  color: var(--accent-fg);
+
+  &:hover:not(:disabled) {
+    background: var(--accent);
+  }
 }
