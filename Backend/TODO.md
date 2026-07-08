@@ -38,7 +38,8 @@
       (GitHub-style) instead of floating under the text mid-header. Verified in the running app:
       all four tabs measure exactly top 0 / height 56 on every route.
 - [x] **Reorder + restyle the header nav — implemented.** Tabs now read Audit, Assistant,
-      Flashcards, Home (feature tabs lead, Home follows), and the Profile link is a circular
+      Flashcards, About (feature tabs lead; the home page's tab follows, relabelled "About" by
+      request since the page is portfolio/about content), and the Profile link is a circular
       avatar icon (person SVG, 32px, `aria-label="Profile"` so the Playwright e2e's
       `getByRole('link', { name: 'Profile' })` still matches) pushed to the far top-right with
       `margin-left: auto`; signed out, that same far-right slot shows the Sign in link instead.
