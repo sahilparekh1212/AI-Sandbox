@@ -2,6 +2,49 @@
 
 ## Open roadmap (prioritized)
 
+### Deployment: live on Google Cloud, deployed from GitHub (NEXT UP)
+Chosen shape: one GCE VM running the existing compose stack via `docker-compose.ghcr.yml`
+(the CD workflow already pushes signed images to GHCR on every merge), deployed by a GitHub
+Actions workflow authenticated with Workload Identity Federation. GKE Autopilot + Cloud SQL
+(pgvector-capable) + Memorystore was considered and deferred: ~3x the cost, and Kafka still
+needs self-hosting either way — worth an ADR when/if this ships, same "considered
+alternative" treatment as ADR-0005/0008.
+
+- [ ] **GCP foundation.** Project + billing; enable Compute Engine + Secret Manager APIs.
+      `e2-standard-2` VM (8GB — the 11-container stack with monitoring won't fit in 4GB),
+      Debian + Docker, static external IP, firewall allowing 80/443 only — the UI nginx
+      proxy stays the single entry point; 8083/8085 never exposed.
+- [ ] **Domain + HTTPS.** Domain (or `<ip>.nip.io` free) with an A-record to the VM. TLS
+      termination via a Caddy container (or certbot) in front of the `ui` nginx — the stack
+      already assumes same-origin proxying, so only the outermost layer changes.
+- [ ] **Google OAuth prod client.** Add the exact redirect URI
+      `https://<domain>/auth-api/login/oauth2/code/google` to the OAuth client (the
+      forwarded-headers work from the UI-container item makes the proxied flow correct
+      already); move the consent screen out of testing mode if arbitrary Google accounts
+      (recruiters) will sign in.
+- [ ] **Secrets.** Fresh prod `AUTH_RSA_PRIVATE_KEY` keypair, real `GOOGLE_CLIENT_ID`/
+      `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, non-default DB
+      password. Simplest: GitHub Environment secrets injected into an `.env` on the VM at
+      deploy time; Secret Manager is the upgrade path/talking point.
+- [ ] **GitHub → GCP deploy workflow.** Workload Identity Federation between Actions and a
+      GCP service account (keyless — pairs with the existing keyless cosign story), then a
+      `deploy.yml` after CD: SSH to the VM → `docker compose -f docker-compose.yml -f
+      docker-compose.ghcr.yml -f docker-compose.prod.yml pull && up -d`. Stretch: `cosign
+      verify` the digests pre-start, turning the supply-chain signing into an enforced
+      deploy gate. GHCR packages public (or a pull token on the VM).
+- [ ] **`docker-compose.prod.yml` override.** Real-domain `CORS_ALLOWED_ORIGINS`/
+      `FRONTEND_URL`, `SPRING_PROFILES_ACTIVE=PROD`, real DB password, restart policies,
+      no published ports except the front proxy, Redpanda memory flags trimmed to VM size.
+- [ ] **Backups.** Nightly `pg_dump` to a GCS bucket (one cron line — the honest "backups
+      exist" answer). Note the volume also now carries the pgvector `rag_chunk` index; a
+      lost index self-heals on restart via the content-hash indexer, so audit rows are the
+      only data that actually needs the backup.
+- [ ] **Post-deploy verification + surface decisions.** Live click-through: Google OAuth,
+      demo login, audit dashboard, `/mcp` handshake (`claude mcp add --transport http
+      ai-sandbox https://<domain>/mcp`), Grafana. Decide deliberately: keep `demo`/`demo`
+      in prod (recruiter-friendly) vs drop it; the demo-log generator and seeder already
+      don't exist outside LOCAL/DEV.
+
 ### Feature: RAG MCP server with a vector DB
 - [x] **RAG MCP server backed by a vector database — implemented.** New `rag/` package in
       Audit + `POST /mcp`, a Model Context Protocol server (Streamable HTTP, stateless
