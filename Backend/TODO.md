@@ -10,31 +10,44 @@ Actions workflow authenticated with Workload Identity Federation. GKE Autopilot 
 needs self-hosting either way — worth an ADR when/if this ships, same "considered
 alternative" treatment as ADR-0005/0008.
 
-- [ ] **GCP foundation.** Project + billing; enable Compute Engine + Secret Manager APIs.
-      `e2-standard-2` VM (8GB — the 11-container stack with monitoring won't fit in 4GB),
-      Debian + Docker, static external IP, firewall allowing 80/443 only — the UI nginx
-      proxy stays the single entry point; 8083/8085 never exposed.
-- [ ] **Domain + HTTPS.** Domain (or `<ip>.nip.io` free) with an A-record to the VM. TLS
-      termination via a Caddy container (or certbot) in front of the `ui` nginx — the stack
-      already assumes same-origin proxying, so only the outermost layer changes.
+- [x] **GCP foundation — done.** Project `divine-camera-500401-g9`, Compute Engine + Secret
+      Manager APIs enabled, static IP `34.139.83.81` (`ai-sandbox-ip`, us-east1), firewall
+      `allow-web` (tcp:80,443, tag `web`), VM `ai-sandbox-vm` (us-east1-b, e2-standard-2,
+      Debian 12, 50GB) with Docker installed and usable without sudo.
+- [x] **Domain + HTTPS — done.** `sahilparekh1212.com` bought at Porkbun; A record
+      `ai-sandbox` → `34.139.83.81` (Porkbun's default wildcard-parking CNAME had to be
+      deleted — it shadowed the subdomain), verified resolving via 8.8.8.8. TLS = the new
+      `caddy` service in `docker-compose.prod.yml` + `deploy/Caddyfile` (auto Let's Encrypt
+      for `$DOMAIN` in front of the ui nginx). Prod origin:
+      `https://ai-sandbox.sahilparekh1212.com`.
 - [ ] **Google OAuth prod client.** Add the exact redirect URI
-      `https://<domain>/auth-api/login/oauth2/code/google` to the OAuth client (the
-      forwarded-headers work from the UI-container item makes the proxied flow correct
-      already); move the consent screen out of testing mode if arbitrary Google accounts
-      (recruiters) will sign in.
-- [ ] **Secrets.** Fresh prod `AUTH_RSA_PRIVATE_KEY` keypair, real `GOOGLE_CLIENT_ID`/
-      `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, non-default DB
-      password. Simplest: GitHub Environment secrets injected into an `.env` on the VM at
-      deploy time; Secret Manager is the upgrade path/talking point.
-- [ ] **GitHub → GCP deploy workflow.** Workload Identity Federation between Actions and a
-      GCP service account (keyless — pairs with the existing keyless cosign story), then a
-      `deploy.yml` after CD: SSH to the VM → `docker compose -f docker-compose.yml -f
-      docker-compose.ghcr.yml -f docker-compose.prod.yml pull && up -d`. Stretch: `cosign
-      verify` the digests pre-start, turning the supply-chain signing into an enforced
-      deploy gate. GHCR packages public (or a pull token on the VM).
-- [ ] **`docker-compose.prod.yml` override.** Real-domain `CORS_ALLOWED_ORIGINS`/
-      `FRONTEND_URL`, `SPRING_PROFILES_ACTIVE=PROD`, real DB password, restart policies,
-      no published ports except the front proxy, Redpanda memory flags trimmed to VM size.
+      `https://ai-sandbox.sahilparekh1212.com/auth-api/login/oauth2/code/google` to the
+      OAuth client (the forwarded-headers work from the UI-container item makes the proxied
+      flow correct already); move the consent screen out of testing mode if arbitrary
+      Google accounts (recruiters) will sign in.
+- [ ] **Secrets + arm the deploy.** GitHub repo secrets: `AUTH_RSA_PRIVATE_KEY` (fresh
+      PKCS8 keypair), `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`,
+      `VOYAGE_API_KEY`, `DB_PASSWORD`, plus the WIF pair `GCP_WIF_PROVIDER`/`GCP_DEPLOY_SA`;
+      repo variables `DEPLOY_DOMAIN=ai-sandbox.sahilparekh1212.com` and `DEPLOY_ENABLED=true`
+      (the workflow is dormant until this flips). One-time Cloud Shell setup: deploy SA,
+      workload-identity pool/provider pinned to this repo, `roles/compute.osAdminLogin` +
+      `iam.serviceAccountUser`, OS Login metadata on the VM; GHCR packages public.
+- [x] **GitHub → GCP deploy workflow — built (dormant until armed).**
+      `.github/workflows/deploy.yml`: runs after a successful CD on main (plus
+      `workflow_dispatch` for the first deploy), authenticates keyless via WIF, ships the
+      compose bundle + monitoring configs to `/opt/ai-sandbox`, writes `.env` (single-line
+      secrets) and `secrets/auth_key.pem` (multi-line PEM can't live in `.env`; it's
+      exported into the shell that runs compose — shell env beats `.env` in precedence),
+      then `pull && up -d --no-build`, then smoke-checks `/`, `/audit-api/actuator/health`
+      and an MCP `ping` through the public origin. Gated on `DEPLOY_ENABLED` so merging is
+      safe pre-setup. Stretch (still open): `cosign verify` digests pre-start.
+- [x] **`docker-compose.prod.yml` override — built.** Caddy on 80/443 is the only published
+      port (every other service's ports withdrawn via `!reset`, verified with
+      `docker compose config` — Grafana/Prometheus now SSH-tunnel-only);
+      `SPRING_PROFILES_ACTIVE=PROD` (WARN logging, no seeder/demo-log endpoint — the
+      recruiter demo login stays, it's property-gated not profile-gated); real-domain
+      CORS/FRONTEND_URL; `DB_PASSWORD` for Postgres + Audit; restart policies. Redpanda
+      already runs `--mode=dev-container --smp=1` — no further trimming needed.
 - [ ] **Backups.** Nightly `pg_dump` to a GCS bucket (one cron line — the honest "backups
       exist" answer). Note the volume also now carries the pgvector `rag_chunk` index; a
       lost index self-heals on restart via the content-hash indexer, so audit rows are the
