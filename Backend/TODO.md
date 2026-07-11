@@ -50,13 +50,19 @@ alternative" treatment as ADR-0005/0008.
       created with an empty `$PROJECT_NUM` (Cloud Shell env vars don't survive sessions),
       the smoke check racing Let's Encrypt's first issuance, and gcloud's short-TTL implicit
       OS Login key expiring mid-run — the merge→CD→Deploy chain then ran fully green.
-- [ ] **Make the app work on mobile.** The SPA is desktop-first today (fixed 56px header
-      tabs, 1100px centered column, the audit table's full-bleed breakout, side-by-side
-      composer). Needs a responsive pass: viewport-driven layout for the nav (collapse or
-      scrollable tabs), the dashboard table (horizontal scroll or card rows on small
-      screens), chat/flashcards forms stacking, and touch targets. Verify with Playwright's
-      mobile emulation (adds a real e2e dimension) and Lighthouse mobile score as the
-      honest metric.
+- [x] **Make the app work on mobile — responsive pass done.** Added a single `max-width: 640px`
+      breakpoint per component (no framework): the header tightens its padding/gaps and the tab
+      row scrolls horizontally instead of wrapping or shoving the avatar off-screen; the audit
+      **table becomes a list of cards** on phones (`table/tr/td → display:block`, `thead` hidden,
+      each cell shows its column name via a `data-label` attribute + `::before`), so a fixed 230px
+      time column no longer forces horizontal scroll; the filter + demo-log controls stack
+      full-width for tapping; the flashcards controls wrap full-width. Chat's composer and the
+      home page's `auto-fit`/`minmax` grids were already fluid. Verified at a real 375px viewport
+      (Angular dev server on 4200 against the running backend) across login, dashboard (cards +
+      stacked filters), flashcards, chat, and the nav — screenshots confirmed no horizontal
+      scroll and one-row nav everywhere. Frontend-CI gates all green (prod build, ESLint,
+      Prettier, 49 unit tests). Still open as honest follow-ups (not blockers): a Playwright
+      mobile-emulation e2e and a Lighthouse mobile score for a measured number.
 - [ ] **Update README for public use.** Lead with the live URL
       (https://ai-sandbox.sahilparekh1212.com), the demo login (`demo`/`demo`), and the
       public MCP endpoint (`claude mcp add --transport http ai-sandbox
@@ -121,22 +127,37 @@ alternative" treatment as ADR-0005/0008.
 ### Dashboard — make it meaningful and relevant (NEXT UP)
 The prod dashboard is sparse because the audit trail only records Auth's `LOGIN` events; for
 a project that's fundamentally an AI sandbox (chat, flashcards, RAG, MCP) it should show what
-the app actually does. Four items, item 1 is the headline and unblocks the rest. Context: the
+the app actually does. Four items; item 1 (the headline that unblocks the rest) has landed —
+the AI features now emit domain events, so item 2 (a time dimension) is next up. Context: the
 "Add demo logs" button is now hidden in prod (a LOCAL/DEV-only affordance — see the
 `/api/v1/meta/features` capability probe), so prod won't be padded with dummy rows; real usage
 should populate it instead.
-- [ ] **1. Emit audit events from the AI features (headline; unblocks 2–4).** Have Chat,
-      Flashcards, RAG search and the MCP tools each publish an `AuditEvent` over the existing
-      Kafka → Audit pipeline (reuse the exact `com.aisandbox.common.event.AuditEvent` contract
-      Auth already produces with — check `AuthController`/its publisher first). Suggested
-      shapes: `Assistant/CHAT`, `Flashcards/GENERATED`, `Rag/SEARCH`, `Mcp/TOOL_CALL`, with
-      **non-PII** detail only (model, latency ms, retrieved-chunk count, screener-blocked
-      flag — never message text). Payoff: the dashboard tells *this app's* story, prod
-      populates organically from real visitors (no dummy data), and it's a strong
-      event-sourcing/CQRS narrative ("every feature emits a domain event; Audit is the sink;
-      the dashboard is its read model") that exercises the Kafka pipeline for something real.
-      Watch the fire-and-forget/at-most-once posture from ADR-0006 (audit loss on broker
-      outage is acceptable for these too).
+- [x] **1. Emit audit events from the AI features (headline; unblocks 2–4) — implemented.** The
+      AI features all live *inside* the Audit service, so rather than persist rows inline they
+      now publish through the same `audit.events` Kafka topic Auth uses and are consumed back by
+      Audit's own `AuditEventConsumer` — one uniform event-sourcing path for every producer
+      (another service or this one), exercising the Kafka pipeline for real feature traffic. New
+      `com.aisandbox.audit.event.AuditEventPublisher` mirrors Auth's exactly: reuses the shared
+      `com.aisandbox.common.event.AuditEvent` contract, `@Async` + fire-and-forget (with
+      `@EnableAsync` on `AuditApplication` and `max.block.ms=5000` on the producer, both mirrored
+      from Auth) so a slow/absent broker never blocks or fails a feature request — the ADR-0006
+      at-most-once posture applies unchanged. Four shapes, each at its own service boundary with
+      **non-PII** `key=value` detail only (never message/query/card text): `Assistant/CHAT`
+      (`AssistantService` — `blocked`, `model`, `latencyMs`, `retrievedChunks`; the blocked turn
+      emits too, carrying the screener *category* name, not the matched value), `Flashcards/
+      GENERATED` (`FlashcardService` — `model`, `requested`, `produced`, `latencyMs`), `Rag/SEARCH`
+      and `Mcp/TOOL_CALL` (`McpController` — `search_knowledge` maps to `Rag/SEARCH` since it *is*
+      a semantic search; other tools like `list_sources` map to `Mcp/TOOL_CALL`; detail carries
+      `tool`, `latencyMs`, `error`). Deliberate no-double-count decision: chat's internal RAG
+      grounding is captured as the `retrievedChunks` field on the CHAT event rather than a second
+      `Rag/SEARCH` row, so every user-facing action is exactly one event — matching the TODO's
+      own "retrieved-chunk count" detail hint. Events emit only on genuinely-completed actions
+      (not on unconfigured 503s, provider failures, or protocol-level tool errors). Tested at each
+      seam: new `AuditEventPublisherTest` (keying, fire-and-forget failure swallow) plus emit +
+      no-emit + no-PII-leak assertions added to `AssistantServiceTest`/`FlashcardServiceTest`/
+      `McpControllerTest`; full Audit suite + 90% coverage gate + Spotless all green locally. Not
+      yet seen populating a live dashboard (needs the deploy) — but the pipeline it rides is the
+      same one the E2E suite already asserts end-to-end for LOGIN.
 - [ ] **2. Add a time dimension.** Today only by-action/by-entityType bars exist. Add an
       "events over the last 24h/7d" line or sparkline (dependency-free, matching the existing
       CSS bar-chart style) so usage trends are visible — needs a backend time-bucket
@@ -151,6 +172,65 @@ should populate it instead.
       link out to Grafana. The contrast is itself an interview talking point.
 
 ### Feature: RAG MCP server with a vector DB
+- [x] **Assistant reads the actual backend source (repo-as-corpus) — implemented.** Extended the
+      RAG corpus beyond docs to include the **backend source itself** (Auth + Audit + common Java,
+      resources, and the Gradle build files), so the prod chat can read and quote the real deployed
+      code, not just its documentation. `CodeChunker` splits source by size on line boundaries
+      (line-range labels); `RagIndexer` dispatches markdown-vs-code per file; `CorpusLoader` loads
+      both; `Audit/build.gradle` bundles the source into `rag-corpus/` and `Audit/Dockerfile` gained
+      `COPY Auth/src` so Auth's source exists in the build stage. Chosen shape (of the two the user
+      weighed): **build-time bundling**, not a runtime `git clone` on the VM — because the image is
+      built from `main` (merge → CD → deploy), the indexed source is *by construction* the deployed
+      code, with no drift, git, network, or auth (public repo → read-only is inherent), keeping
+      ADR-0010's self-contained-image property. Scope limit: only the Audit image's Docker build
+      context (`Backend/`) can be bundled, so backend source is in but `UI/` and the compose/CI YAML
+      above `Backend/` are not (code-map + ui-guide cover those); recorded in the ADR-0010 addendum.
+      Verified live: index grew to 336 chunks / 130 docs (174 source chunks newly embedded), and the
+      chat accurately quoted `AuditEventPublisher`'s topic/keying/`@Async` posture straight from the
+      source. Tested (`CodeChunkerTest`; `CorpusLoaderTest` asserts a `.java` + a Gradle file are
+      bundled; `RagIndexerTest` covers the code path); 90% gate + Spotless green.
+      **Extended to the UI + observability stack:** the corpus now also bundles the **Angular UI
+      source** (`UI/src`) and the **observability/deployment configs** (`monitoring/`, the compose
+      files, `openshift/`). Observability lives under `Backend/` so it was a straight COPY + include;
+      `UI/` is outside the Audit image's build context, so it's supplied as a **named build context**
+      (`--build-context ui=../UI`, copied to `/UI` so the Gradle `../UI` path resolves identically
+      host-vs-container — no host-only artifact). Every Audit-image build site passes it:
+      `docker-compose.yml` (`additional_contexts`), `cd.yml` (`build-contexts`), and the Trivy build
+      in `backend-ci.yml` (`--build-context`). Verified live in the rebuilt image (459 chunks / 219
+      docs; 47 UI files, 8 monitoring, 29 openshift indexed): the chat read `auth.interceptor.ts`'s
+      401 refresh-retry and compared all three Prometheus configs (static vs `dns_sd_configs` vs
+      OpenShift) from the actual files. Recorded in ADR-0010 addendum 2. **Note:** the three CI/build
+      changes are verified locally via `docker compose build` and the mirrored
+      `docker build --build-context ui=../UI` command; the `cd.yml` `build-contexts` input can only
+      be exercised on a real push — watch that CD run when this ships.
+- [x] **Assistant explains the codebase + turns stack traces into IDE prompts — implemented.**
+      Two changes on top of the RAG assistant so it can "explain everything" about the repo, not
+      just the app's behaviour. (1) **Dataset:** a new file-by-file [`docs/code-map.md`](docs/code-map.md)
+      summarises every significant source/config/infra file, grouped by concern (Docker, CI/CD,
+      Kafka pipeline, Auth, Audit, RAG/MCP, Assistant, UI, observability, DB, docs). The concern
+      headings double as retrieval anchors — heading-based chunking means "which files are tied to
+      the Docker setup?" pulls the whole Docker group as one chunk. It rides the existing corpus
+      path (`docs/**/*.md` → `rag-corpus/` → `CorpusLoader`), so it indexed automatically on rebuild
+      (150 chunks / 15 docs, 18 newly embedded). (2) **Prompt:** `AssistantContextBuilder`'s chat
+      system prompt now (a) permits codebase/file questions and tells the model to list relevant
+      file paths with a one-line role each, drawing only on the code map (no invented paths), and
+      (b) handles a pasted error/stack trace by naming the likely files and then emitting a single
+      ready-to-paste prompt for an IDE assistant (Claude Code / GitHub Copilot) in a fenced code
+      block — goal, quoted error line, files to inspect, root-cause ask. Considered but dropped:
+      bundling the repo-ROOT README into the corpus — the Audit image's Docker build context is
+      `Backend/`, so anything above it is unreachable at image-build time; copying it would only
+      populate the host/CI build and give a corpus that differs from the shipped container (the
+      backend README + code map already cover retrieval). Tested (`CorpusLoaderTest` asserts the
+      code map is bundled; `AssistantContextBuilderTest` asserts the new prompt rules) and verified
+      live against the running stack: the docker-files question returned the exact file list, and a
+      Kafka-consumer NPE stack trace produced a correct IDE prompt naming `AuditEventConsumer`/
+      `AuditLog`/`AuditEvent` and even flagging the DLT/fire-and-forget nuance from ADR-0006.
+      Follow-up: added a component-level [`docs/ui-guide.md`](docs/ui-guide.md) (each Angular page →
+      its component/template, interactive elements, service, and the backend endpoint it hits)
+      after a live question ("which component has the chat input line and what endpoint?") exposed
+      that the code map indexed the UI *files* but not their *elements/endpoints* — the assistant
+      now answers it crisply (Assistant page → `assistant.component.html` composer input →
+      `assistant.service.ts` → `POST /api/v1/assistant/chat`).
 - [x] **RAG MCP server backed by a vector database — implemented.** New `rag/` package in
       Audit + `POST /mcp`, a Model Context Protocol server (Streamable HTTP, stateless
       subset) exposing `search_knowledge` + `list_sources` over this repo's own knowledge
@@ -180,6 +260,26 @@ should populate it instead.
       `VOYAGE_API_KEY`, `docker compose up -d --build`, then the `claude mcp add` line above.
 
 ### Product/UI roadmap (portfolio presentation)
+- [x] **Internationalization (i18n) — implemented, hand-rolled + JSON-driven.** The UI text is
+      driven from per-language JSON dictionaries (`UI/public/i18n/<code>.json`) through a tiny
+      no-framework runtime: a `TranslateService` (current-language signal, English bundled as the
+      always-present fallback, other languages fetched once and cached in memory + an nginx
+      `Cache-Control` on `/i18n/` since they only change per deploy), an impure `t` pipe
+      (`{{ 'nav.dashboard' | t }}`, with `{token}` interpolation for counts), and a header
+      **language switcher next to the avatar** offering the nine required languages — English,
+      French, Spanish, Hindi, Gujarati, Punjabi, Chinese, Korean, Japanese (each shown in its own
+      endonym) — plus an on-demand **Google Translate** option that lazily loads Google's Website
+      Translator for anything not translated in-app (e.g. the long-form About prose, left to
+      Google by design). The choice persists in localStorage and drives `<html lang>` (also helps
+      Google detect the source page). Scope: nav, login, dashboard, chat, flashcards and profile
+      chrome are translated; backend data values (entityType/action bucket keys) stay as-is.
+      Verified live end-to-end (switched to Japanese: full UI + count-interpolated "338 件の一致",
+      persisted across reload, `ja.json` served 200 from the image). Frontend-CI green (build,
+      ESLint, Prettier, 49 unit tests). Two small dashboard fixes rode along: the "N matching
+      entries" line is now a full-width panel heading divided from the two charts by a rule (it
+      previously read ambiguously as a caption on the first chart), and confirmed the "Add demo
+      logs" input+button stay hidden in PROD (the `/api/v1/meta/features` probe derives `demoData`
+      from the LOCAL/DEV-only `DemoDataController` bean's presence).
 - [x] **GitHub-like dark theme UI restyle — implemented (PR #49).** One design-token layer in
       `styles.scss` (GitHub Primer dark palette as CSS custom properties: canvas `#0d1117`,
       borders `#30363d`, accent `#2f81f7`, plus text/status/button tokens) with base element

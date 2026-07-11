@@ -109,3 +109,21 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+// Phones: let the count field + action buttons wrap and fill the width instead of overflowing
+// the single row.
+@media (max-width: 640px) {
+  .controls {
+    flex-wrap: wrap;
+    align-items: stretch;
+
+    label,
+    input {
+      width: 100%;
+    }
+
+    button {
+      flex: 1;
+    }
+  }
+}

@@ -120,3 +120,51 @@ properties make this safe by construction:
 - The MCP endpoint is stateless; a client that requires session semantics or SSE resumption
   won't get them — acceptable for the current clients (Claude Code's HTTP transport handles
   plain JSON responses).
+
+## Addendum — indexing the backend source itself (repo-as-corpus)
+
+The corpus was later extended from documentation to include **the backend source itself**
+(Auth + Audit + common Java, their resources, and the Gradle build files), so the assistant can
+answer questions about the actual deployed code — not only its docs. Chunking dispatches on file
+type: markdown by heading (`MarkdownChunker`), source by size on line boundaries with a
+line-range label (`CodeChunker`).
+
+The requirement was "let the prod chat read the repo's `main` branch." Two shapes were weighed:
+
+- **Runtime clone on the VM** (`git clone main` at startup, re-index on a schedule). Tracks the
+  latest `main` independent of the deploy, but adds a runtime git + network dependency and drops
+  the self-contained-image property this ADR (Decision 3) deliberately chose — it would need its
+  own refresh/failure story.
+- **Build-time bundling (chosen).** The corpus is copied into the jar at build time, exactly as
+  the docs already were. Because the image is built from `main` (merge → CD → deploy), the indexed
+  source is *by construction* the deployed code — no drift, no extra moving parts, no network or
+  auth (the repo is public, so read-only is inherent). This keeps the "same jar indexes the same
+  corpus anywhere" property intact.
+
+Scope limit worth recording: only files inside the Audit image's Docker build context (`Backend/`,
+specifically what `Audit/Dockerfile` COPYs into the build stage) can be bundled. Backend source and
+Gradle files qualify; the Angular `UI/` and the compose/CI YAML that live *above* `Backend/` do not
+— they would only ever populate a host/CI build, not the shipped container (the same trap that made
+bundling the repo-root README a host-only artifact). The `docs/code-map.md` and `docs/ui-guide.md`
+descriptions cover those instead. If the UI source is wanted in the index later, the deliberate move
+is to widen the Docker build context, not to sneak a host-only `from` into `processResources`.
+
+### Addendum 2 — extending the corpus to the UI and observability stack
+
+The corpus was then widened again to cover the **Angular UI source** and the **observability +
+deployment configs** (Prometheus/Loki/Tempo/Grafana, the compose stack, the OpenShift manifests),
+so the assistant can read the whole system, not just the backend.
+
+The observability/deploy configs live under `Backend/` (already in the build context), so they were
+just added to the `processResources` copy and `Audit/Dockerfile`. The UI was the interesting case:
+`UI/` is a *sibling* of `Backend/`, outside the Audit image's build context — the exact limitation
+the first addendum recorded. Rather than widen the context to the repo root (which would have
+re-pathed every `COPY` and needed a repo-root `.dockerignore`), the UI is supplied as a **named
+build context** (`--build-context ui=../UI`, `additional_contexts` in compose) and copied to an
+absolute `/UI` — a sibling of the Gradle root `/workspace` — so `processResources`'
+`"${rootProject}/../UI"` resolves to it in-container exactly as it resolves to `<repo>/UI` on a host
+build. That keeps host and container corpora identical (no host-only artifact) with a one-line
+`COPY --from=ui`. Every place the Audit image is built now passes that context: `docker-compose.yml`
+(`additional_contexts`), `cd.yml` (`build-contexts`), and the Trivy build in `backend-ci.yml`
+(`--build-context`). `package-lock.json` and `node_modules` are excluded (no explanatory value /
+never in the context); empty files (e.g. an empty Angular `*.scss`) are skipped by `CorpusLoader`.

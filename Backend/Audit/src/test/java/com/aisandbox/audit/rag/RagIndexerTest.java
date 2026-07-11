@@ -22,12 +22,14 @@ class RagIndexerTest {
 		new RagProperties(true, "", "voyage-3.5-lite", 2, 2000, 5);
 
 	private final CorpusLoader corpusLoader = mock(CorpusLoader.class);
-	private final MarkdownChunker chunker = new MarkdownChunker(CONFIGURED);
+	private final MarkdownChunker markdownChunker = new MarkdownChunker(CONFIGURED);
+	private final CodeChunker codeChunker = new CodeChunker(CONFIGURED);
 	private final EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
 	private final VectorStore vectorStore = mock(VectorStore.class);
 
 	private RagIndexer indexer(RagProperties properties) {
-		return new RagIndexer(properties, corpusLoader, chunker, embeddingClient, vectorStore);
+		return new RagIndexer(properties, corpusLoader, markdownChunker, codeChunker, embeddingClient,
+			vectorStore);
 	}
 
 	@Test
@@ -49,6 +51,21 @@ class RagIndexerTest {
 		verify(embeddingClient).embedDocuments(List.of("# Title\nSome intro."));
 		verify(vectorStore).upsert(anyList(), anyList());
 		verify(vectorStore).retainOnly(anySet());
+	}
+
+	@Test
+	void nonMarkdownDocumentsAreChunkedAsCode() {
+		// A .java source file has no markdown headings; it must still be embedded (via CodeChunker),
+		// with the chunk text being the code itself.
+		when(corpusLoader.load()).thenReturn(List.of(new CorpusLoader.CorpusDocument(
+			"Audit/src/main/java/com/aisandbox/audit/Foo.java", "class Foo {\n  int x;\n}")));
+		when(vectorStore.existingIds()).thenReturn(Set.of());
+		when(embeddingClient.embedDocuments(anyList())).thenReturn(List.of(new float[] {1, 0}));
+
+		indexer(CONFIGURED).run(null);
+
+		verify(embeddingClient).embedDocuments(List.of("class Foo {\n  int x;\n}"));
+		verify(vectorStore).upsert(anyList(), anyList());
 	}
 
 	@Test

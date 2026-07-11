@@ -35,4 +35,54 @@ processResources {
 		include 'docs/**/*.md'
 		into 'rag-corpus'
 	}
+	// Bundle the backend SOURCE (Auth + Audit + common) into the corpus too, so the assistant can
+	// read the actual deployed code — not just its documentation. The image is built from main
+	// (merge → CD → deploy), so the indexed source always matches what's running; CorpusLoader
+	// picks these up and CodeChunker splits them by size on line boundaries. Paths are preserved
+	// under rag-corpus/ so a chunk's source reads as its repo-relative path (e.g.
+	// Audit/src/main/java/.../AuditEventPublisher.java).
+	//
+	// Scope note: only files that exist in the Audit image's Docker build context (Backend/, and
+	// specifically what Audit/Dockerfile COPYs into the build stage) can be bundled — so backend
+	// source + Gradle build files are in, but UI/ (Angular) and the compose/CI yaml above Backend/
+	// are not (they'd only ever populate a host build). The code map + ui-guide cover those.
+	from(rootProject.projectDir) {
+		include 'Auth/src/main/**'
+		include 'Audit/src/main/**'
+		include 'common/src/main/**'
+		include 'settings.gradle'
+		include 'build.gradle'
+		include 'Auth/build.gradle'
+		include 'Audit/build.gradle'
+		include 'common/build.gradle'
+		// Markdown is already bundled as docs above (and app-context.md is loaded directly);
+		// don't double-index it via the source tree.
+		exclude '**/*.md'
+		into 'rag-corpus'
+	}
+	// Observability + deployment topology: the Prometheus/Loki/Tempo/Grafana configs, the compose
+	// stack, and the OpenShift manifests. These live under Backend/ (already in the Docker build
+	// context), so no extra wiring beyond Audit/Dockerfile COPYing them into the build stage.
+	from(rootProject.projectDir) {
+		include 'monitoring/**'
+		include 'docker-compose*.yml'
+		include 'kafka/docker-compose.yml'
+		include 'openshift/**'
+		into 'rag-corpus'
+	}
+	// Frontend (Angular UI) source. UI/ sits ABOVE Backend/ (this Gradle root), i.e. outside the
+	// Audit image's Docker build context — so the container build receives it as a named build
+	// context (ui=../UI, copied to /UI in Audit/Dockerfile) and this path resolves to /UI there
+	// and to <repo>/UI on a host build: identical either way, so the bundle can't become a
+	// host-only artifact. package-lock is excluded (huge, no explanatory value); node_modules
+	// never enters the context (UI/.dockerignore).
+	from(file("${rootProject.projectDir}/../UI")) {
+		include 'src/**'
+		include 'nginx.conf'
+		include 'package.json'
+		include 'angular.json'
+		include 'tsconfig*.json'
+		exclude '**/*.spec.ts'
+		into 'rag-corpus/UI'
+	}
 }

@@ -29,15 +29,17 @@ public class RagIndexer implements ApplicationRunner {
 
 	private final RagProperties properties;
 	private final CorpusLoader corpusLoader;
-	private final MarkdownChunker chunker;
+	private final MarkdownChunker markdownChunker;
+	private final CodeChunker codeChunker;
 	private final EmbeddingClient embeddingClient;
 	private final VectorStore vectorStore;
 
-	public RagIndexer(RagProperties properties, CorpusLoader corpusLoader, MarkdownChunker chunker,
-			EmbeddingClient embeddingClient, VectorStore vectorStore) {
+	public RagIndexer(RagProperties properties, CorpusLoader corpusLoader, MarkdownChunker markdownChunker,
+			CodeChunker codeChunker, EmbeddingClient embeddingClient, VectorStore vectorStore) {
 		this.properties = properties;
 		this.corpusLoader = corpusLoader;
-		this.chunker = chunker;
+		this.markdownChunker = markdownChunker;
+		this.codeChunker = codeChunker;
 		this.embeddingClient = embeddingClient;
 		this.vectorStore = vectorStore;
 	}
@@ -61,7 +63,11 @@ public class RagIndexer implements ApplicationRunner {
 		List<CorpusLoader.CorpusDocument> documents = corpusLoader.load();
 		List<DocChunk> corpus = new ArrayList<>();
 		for (CorpusLoader.CorpusDocument document : documents) {
-			corpus.addAll(chunker.chunk(document.source(), document.content()));
+			// Markdown docs chunk by heading; source files by size on line boundaries.
+			List<DocChunk> chunks = document.source().endsWith(".md")
+				? markdownChunker.chunk(document.source(), document.content())
+				: codeChunker.chunk(document.source(), document.content());
+			corpus.addAll(chunks);
 		}
 		Set<String> liveIds = corpus.stream().map(DocChunk::id).collect(Collectors.toSet());
 		Set<String> existing = vectorStore.existingIds();

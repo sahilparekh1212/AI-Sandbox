@@ -52,10 +52,17 @@
     }
   }
 
-  // Far-right slot: circular Profile avatar when signed in, Sign in otherwise.
+  // Far-right cluster: language switcher, the (hidden) Google Translate mount, and the
+  // circular Profile avatar when signed in / the Login link otherwise.
+  .header-right {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   .avatar,
   .sign-in {
-    margin-left: auto;
     align-self: center;
   }
 
@@ -107,4 +114,33 @@
   // Full-width, top-left content on every tab (matching the Dashboard's anchored layout)
   // rather than a centered column — pages align to the same left gutter as they switch.
   padding: 1.5rem;
+}
+
+// Phones: tighten the header and let the tab row scroll horizontally instead of wrapping or
+// pushing the avatar off-screen; trim the page gutter so content gets the narrow width.
+@media (max-width: 640px) {
+  .app-header {
+    gap: 0.75rem;
+    padding: 0 0.75rem;
+
+    .tabs {
+      gap: 1rem;
+      // Shrink below content and scroll if the labels don't fit, keeping the avatar pinned right.
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none; // Firefox
+      &::-webkit-scrollbar {
+        display: none; // WebKit
+      }
+
+      a {
+        white-space: nowrap;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .app-main {
+    padding: 1rem;
+  }
 }
