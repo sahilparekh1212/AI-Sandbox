@@ -20,18 +20,50 @@ alternative" treatment as ADR-0005/0008.
       `caddy` service in `docker-compose.prod.yml` + `deploy/Caddyfile` (auto Let's Encrypt
       for `$DOMAIN` in front of the ui nginx). Prod origin:
       `https://ai-sandbox.sahilparekh1212.com`.
-- [ ] **Google OAuth prod client.** Add the exact redirect URI
-      `https://ai-sandbox.sahilparekh1212.com/auth-api/login/oauth2/code/google` to the
-      OAuth client (the forwarded-headers work from the UI-container item makes the proxied
-      flow correct already); move the consent screen out of testing mode if arbitrary
-      Google accounts (recruiters) will sign in.
-- [ ] **Secrets + arm the deploy.** GitHub repo secrets: `AUTH_RSA_PRIVATE_KEY` (fresh
-      PKCS8 keypair), `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`,
-      `VOYAGE_API_KEY`, `DB_PASSWORD`, plus the WIF pair `GCP_WIF_PROVIDER`/`GCP_DEPLOY_SA`;
-      repo variables `DEPLOY_DOMAIN=ai-sandbox.sahilparekh1212.com` and `DEPLOY_ENABLED=true`
-      (the workflow is dormant until this flips). One-time Cloud Shell setup: deploy SA,
-      workload-identity pool/provider pinned to this repo, `roles/compute.osAdminLogin` +
-      `iam.serviceAccountUser`, OS Login metadata on the VM; GHCR packages public.
+- [ ] **Google OAuth prod client — URIs done, consent screen pending.** Both redirect URIs
+      (prod + localhost) are on "Web client 1" and real client id/secret are deployed. Still
+      open: the consent screen is in Testing mode, so Google sign-in works only for listed
+      test users — publish the app (or add recruiters as test users) before sharing; the
+      demo login works for everyone regardless. Also untested: a live Google sign-in
+      click-through on the prod domain.
+- [x] **Secrets + arm the deploy — done.** All 8 repo secrets + `DEPLOY_DOMAIN`/
+      `DEPLOY_ENABLED` variables set; WIF pool/provider/SA created and verified (first
+      attempt failed with `iam.serviceAccounts.getAccessToken` denied — the
+      `workloadIdentityUser` binding had been created with an empty `$PROJECT_NUM` from a
+      new Cloud Shell session; re-running the binding with the resolved project number
+      fixed it — a good "env vars don't survive Cloud Shell sessions" war story); GHCR
+      packages public (verified anonymously pullable). **First deploy succeeded**:
+      https://ai-sandbox.sahilparekh1212.com live with valid Let's Encrypt TLS, demo login
+      issuing JWTs, audit stats showing LOGIN events flowing through Kafka in prod, MCP
+      endpoint answering.
+- [ ] **Fund the provider accounts (5-min fixes, both diagnosed from prod logs).**
+      (1) Voyage: no payment method → 10K TPM cap → the indexer's first batch 429s and the
+      RAG index stays empty. Add a payment method at dashboard.voyageai.com (the 200M free
+      tokens still apply — indexing is effectively $0), then restart audit
+      (`sudo docker restart aisandbox-audit` or redeploy) and verify `list_sources` via the
+      public MCP endpoint. (2) Anthropic: assistant 503s with `BadRequestException` — the
+      "credit balance too low" 400; buy minimum credits at platform.claude.com → Billing,
+      no restart needed.
+- [ ] **Update README for public use.** Lead with the live URL
+      (https://ai-sandbox.sahilparekh1212.com), the demo login (`demo`/`demo`), and the
+      public MCP endpoint (`claude mcp add --transport http ai-sandbox
+      https://ai-sandbox.sahilparekh1212.com/audit-api/mcp`); reframe the local
+      `docker compose up` instructions as the "run it yourself" alternative; consider a
+      screenshot/GIF of the live dashboard now that one exists.
+- [ ] **Load test the deployed stack + record results.** Decide scope deliberately: the k6
+      suite currently runs against a LOADTEST-profile CI stack; prod is one shared 8GB VM
+      with the rate limiter ON and real provider keys (assistant/RAG endpoints cost money
+      per call — exclude them). A short off-peak k6 smoke against
+      https://ai-sandbox.sahilparekh1212.com (search/stats endpoints, modest VUs) answers
+      "how does the $50 VM hold up" honestly; publish p95/throughput in the README next to
+      the CI numbers.
+- [ ] **Prod monitoring runbook.** Grafana/Prometheus/Loki/Tempo run on the VM but are
+      deliberately unpublished; access via SSH tunnel:
+      `gcloud compute ssh ai-sandbox-vm --zone=us-east1-b -- -L 3000:localhost:3000 -N`
+      then http://localhost:3000. First login: change Grafana's default `admin`/`admin`.
+      Document this in docs/deployment.md; revisit trigger for proper exposure: wanting
+      recruiters to see dashboards live (would need auth in front — Caddy basic-auth
+      subdomain or Grafana anonymous read-only).
 - [x] **GitHub → GCP deploy workflow — built (dormant until armed).**
       `.github/workflows/deploy.yml`: runs after a successful CD on main (plus
       `workflow_dispatch` for the first deploy), authenticates keyless via WIF, ships the
