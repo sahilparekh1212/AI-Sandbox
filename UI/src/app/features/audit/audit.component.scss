@@ -187,3 +187,80 @@
     color: var(--danger);
   }
 }
+
+// Phones: stack the filter/demo controls full-width for easy tapping, and turn the audit table
+// into a list of cards (each row a card, the column name shown inline per cell) so a fixed
+// 230px time column doesn't force horizontal scrolling on a narrow screen.
+@media (max-width: 640px) {
+  .audit {
+    .filters,
+    .demo-tools {
+      flex-direction: column;
+      align-items: stretch;
+
+      label,
+      button,
+      select,
+      input {
+        width: 100%;
+      }
+
+      label.checkbox {
+        flex-direction: row;
+        justify-content: flex-start;
+      }
+    }
+
+    .stats .bar-row {
+      grid-template-columns: 4.5rem 1fr 2rem;
+      font-size: 0.8rem;
+    }
+
+    // Table → cards.
+    table,
+    tbody,
+    tr,
+    td {
+      display: block;
+      width: auto;
+    }
+
+    thead {
+      display: none; // headers become the per-cell data-labels below
+    }
+
+    tbody tr {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--canvas-subtle);
+      margin-bottom: 0.6rem;
+      padding: 0.25rem 0.7rem;
+    }
+
+    td {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      text-align: right;
+      border-bottom: none;
+      padding: 0.4rem 0;
+
+      // The column name, from the cell's data-label attribute in the template.
+      &::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--fg-muted);
+        text-align: left;
+      }
+    }
+
+    td.empty {
+      display: block;
+      text-align: center;
+
+      &::before {
+        content: none;
+      }
+    }
+  }
+}

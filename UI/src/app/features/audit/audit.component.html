@@ -105,10 +105,10 @@
     <tbody>
       @for (row of result()?.content ?? []; track row.id) {
         <tr>
-          <td>{{ row.createdAt | date: 'medium' }}</td>
-          <td>{{ row.entityType }}</td>
-          <td>{{ row.action }}</td>
-          <td>{{ row.details || '—' }}</td>
+          <td data-label="Time">{{ row.createdAt | date: 'medium' }}</td>
+          <td data-label="Entity">{{ row.entityType }}</td>
+          <td data-label="Action">{{ row.action }}</td>
+          <td data-label="Details">{{ row.details || '—' }}</td>
         </tr>
       } @empty {
         <tr>

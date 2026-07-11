@@ -50,13 +50,19 @@ alternative" treatment as ADR-0005/0008.
       created with an empty `$PROJECT_NUM` (Cloud Shell env vars don't survive sessions),
       the smoke check racing Let's Encrypt's first issuance, and gcloud's short-TTL implicit
       OS Login key expiring mid-run — the merge→CD→Deploy chain then ran fully green.
-- [ ] **Make the app work on mobile.** The SPA is desktop-first today (fixed 56px header
-      tabs, 1100px centered column, the audit table's full-bleed breakout, side-by-side
-      composer). Needs a responsive pass: viewport-driven layout for the nav (collapse or
-      scrollable tabs), the dashboard table (horizontal scroll or card rows on small
-      screens), chat/flashcards forms stacking, and touch targets. Verify with Playwright's
-      mobile emulation (adds a real e2e dimension) and Lighthouse mobile score as the
-      honest metric.
+- [x] **Make the app work on mobile — responsive pass done.** Added a single `max-width: 640px`
+      breakpoint per component (no framework): the header tightens its padding/gaps and the tab
+      row scrolls horizontally instead of wrapping or shoving the avatar off-screen; the audit
+      **table becomes a list of cards** on phones (`table/tr/td → display:block`, `thead` hidden,
+      each cell shows its column name via a `data-label` attribute + `::before`), so a fixed 230px
+      time column no longer forces horizontal scroll; the filter + demo-log controls stack
+      full-width for tapping; the flashcards controls wrap full-width. Chat's composer and the
+      home page's `auto-fit`/`minmax` grids were already fluid. Verified at a real 375px viewport
+      (Angular dev server on 4200 against the running backend) across login, dashboard (cards +
+      stacked filters), flashcards, chat, and the nav — screenshots confirmed no horizontal
+      scroll and one-row nav everywhere. Frontend-CI gates all green (prod build, ESLint,
+      Prettier, 49 unit tests). Still open as honest follow-ups (not blockers): a Playwright
+      mobile-emulation e2e and a Lighthouse mobile score for a measured number.
 - [ ] **Update README for public use.** Lead with the live URL
       (https://ai-sandbox.sahilparekh1212.com), the demo login (`demo`/`demo`), and the
       public MCP endpoint (`claude mcp add --transport http ai-sandbox
