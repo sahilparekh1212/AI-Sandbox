@@ -46,7 +46,7 @@ describe('AppComponent', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     const tabs = [...compiled.querySelectorAll('.tabs a')].map((a) => a.textContent?.trim());
-    expect(tabs).toEqual(['Audit', 'Assistant', 'Flashcards', 'About']);
+    expect(tabs).toEqual(['Dashboard', 'Chat', 'Flashcards', 'About']);
   });
 
   it('should show a Sign in link (and no avatar) when signed out', () => {
