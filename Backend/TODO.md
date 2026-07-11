@@ -70,6 +70,21 @@ alternative" treatment as ADR-0005/0008.
       https://ai-sandbox.sahilparekh1212.com (search/stats endpoints, modest VUs) answers
       "how does the $50 VM hold up" honestly; publish p95/throughput in the README next to
       the CI numbers.
+- [ ] **Set up the observability stack for prod.** The four containers
+      (Grafana/Prometheus/Loki/Tempo) ship in the compose stack and start on the VM, but
+      "running" ≠ "set up" — verify each actually works against the *deployed* services, not
+      just locally: (a) Prometheus is scraping both Auth and Audit on the VM (the compose
+      variant uses Docker DNS `dns_sd_configs`, not host ports — confirm targets are UP);
+      (b) Loki is receiving logs from the prod containers (the loki4j appender is only active
+      in DEV/SIT/UAT/PROD — confirm `LOKI_URL` resolves on the VM and log lines carry the
+      right `app` label, the bug that bit locally in PR #64); (c) Tempo is getting traces via
+      the OTLP endpoint and a login→Kafka→persist flow shows as one trace; (d) Grafana's
+      provisioned dashboards + datasources load and are populated. Then decide exposure:
+      currently unpublished (SSH-tunnel only, see the runbook item below) — for a live
+      portfolio demo, put read-only Grafana behind Caddy on a subdomain
+      (`grafana.ai-sandbox.sahilparekh1212.com`) with basic-auth or Grafana anonymous
+      viewer, and change the default `admin`/`admin`. Provider note: none needed — it's all
+      self-hosted OSS.
 - [ ] **Prod monitoring runbook.** Grafana/Prometheus/Loki/Tempo run on the VM but are
       deliberately unpublished; access via SSH tunnel:
       `gcloud compute ssh ai-sandbox-vm --zone=us-east1-b -- -L 3000:localhost:3000 -N`
