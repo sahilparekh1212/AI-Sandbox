@@ -1,5 +1,4 @@
 <section class="assistant">
-  <h1>Chat</h1>
   <p class="hint">
     Ask about this application — its features, how to sign in, or what the audit data shows.
     Messages are screened server-side; don't paste credentials or personal data.
@@ -34,7 +33,7 @@
     <input
       type="text"
       formControlName="message"
-      placeholder="What dataset is this RAG trained upon?"
+      placeholder="Ask a question about this app…"
       maxlength="2000"
       [attr.disabled]="busy() ? '' : null"
       aria-label="Message"
