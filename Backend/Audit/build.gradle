@@ -35,9 +35,29 @@ processResources {
 		include 'docs/**/*.md'
 		into 'rag-corpus'
 	}
-	// Note: the repository-ROOT README (one level above Backend/) is deliberately NOT bundled.
-	// The Audit image's Docker build context is Backend/, so anything above it is unreachable at
-	// image-build time — copying it here would only ever populate the host/CI build, giving a
-	// corpus that differs between a local Gradle build and the shipped container. The backend
-	// README (above) plus docs/code-map.md already cover the repo for retrieval.
+	// Bundle the backend SOURCE (Auth + Audit + common) into the corpus too, so the assistant can
+	// read the actual deployed code — not just its documentation. The image is built from main
+	// (merge → CD → deploy), so the indexed source always matches what's running; CorpusLoader
+	// picks these up and CodeChunker splits them by size on line boundaries. Paths are preserved
+	// under rag-corpus/ so a chunk's source reads as its repo-relative path (e.g.
+	// Audit/src/main/java/.../AuditEventPublisher.java).
+	//
+	// Scope note: only files that exist in the Audit image's Docker build context (Backend/, and
+	// specifically what Audit/Dockerfile COPYs into the build stage) can be bundled — so backend
+	// source + Gradle build files are in, but UI/ (Angular) and the compose/CI yaml above Backend/
+	// are not (they'd only ever populate a host build). The code map + ui-guide cover those.
+	from(rootProject.projectDir) {
+		include 'Auth/src/main/**'
+		include 'Audit/src/main/**'
+		include 'common/src/main/**'
+		include 'settings.gradle'
+		include 'build.gradle'
+		include 'Auth/build.gradle'
+		include 'Audit/build.gradle'
+		include 'common/build.gradle'
+		// Markdown is already bundled as docs above (and app-context.md is loaded directly);
+		// don't double-index it via the source tree.
+		exclude '**/*.md'
+		into 'rag-corpus'
+	}
 }

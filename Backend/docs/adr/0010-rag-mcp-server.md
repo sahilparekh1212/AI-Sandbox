@@ -120,3 +120,31 @@ properties make this safe by construction:
 - The MCP endpoint is stateless; a client that requires session semantics or SSE resumption
   won't get them — acceptable for the current clients (Claude Code's HTTP transport handles
   plain JSON responses).
+
+## Addendum — indexing the backend source itself (repo-as-corpus)
+
+The corpus was later extended from documentation to include **the backend source itself**
+(Auth + Audit + common Java, their resources, and the Gradle build files), so the assistant can
+answer questions about the actual deployed code — not only its docs. Chunking dispatches on file
+type: markdown by heading (`MarkdownChunker`), source by size on line boundaries with a
+line-range label (`CodeChunker`).
+
+The requirement was "let the prod chat read the repo's `main` branch." Two shapes were weighed:
+
+- **Runtime clone on the VM** (`git clone main` at startup, re-index on a schedule). Tracks the
+  latest `main` independent of the deploy, but adds a runtime git + network dependency and drops
+  the self-contained-image property this ADR (Decision 3) deliberately chose — it would need its
+  own refresh/failure story.
+- **Build-time bundling (chosen).** The corpus is copied into the jar at build time, exactly as
+  the docs already were. Because the image is built from `main` (merge → CD → deploy), the indexed
+  source is *by construction* the deployed code — no drift, no extra moving parts, no network or
+  auth (the repo is public, so read-only is inherent). This keeps the "same jar indexes the same
+  corpus anywhere" property intact.
+
+Scope limit worth recording: only files inside the Audit image's Docker build context (`Backend/`,
+specifically what `Audit/Dockerfile` COPYs into the build stage) can be bundled. Backend source and
+Gradle files qualify; the Angular `UI/` and the compose/CI YAML that live *above* `Backend/` do not
+— they would only ever populate a host/CI build, not the shipped container (the same trap that made
+bundling the repo-root README a host-only artifact). The `docs/code-map.md` and `docs/ui-guide.md`
+descriptions cover those instead. If the UI source is wanted in the index later, the deliberate move
+is to widen the Docker build context, not to sneak a host-only `from` into `processResources`.

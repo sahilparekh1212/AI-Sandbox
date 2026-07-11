@@ -166,6 +166,23 @@ should populate it instead.
       link out to Grafana. The contrast is itself an interview talking point.
 
 ### Feature: RAG MCP server with a vector DB
+- [x] **Assistant reads the actual backend source (repo-as-corpus) — implemented.** Extended the
+      RAG corpus beyond docs to include the **backend source itself** (Auth + Audit + common Java,
+      resources, and the Gradle build files), so the prod chat can read and quote the real deployed
+      code, not just its documentation. `CodeChunker` splits source by size on line boundaries
+      (line-range labels); `RagIndexer` dispatches markdown-vs-code per file; `CorpusLoader` loads
+      both; `Audit/build.gradle` bundles the source into `rag-corpus/` and `Audit/Dockerfile` gained
+      `COPY Auth/src` so Auth's source exists in the build stage. Chosen shape (of the two the user
+      weighed): **build-time bundling**, not a runtime `git clone` on the VM — because the image is
+      built from `main` (merge → CD → deploy), the indexed source is *by construction* the deployed
+      code, with no drift, git, network, or auth (public repo → read-only is inherent), keeping
+      ADR-0010's self-contained-image property. Scope limit: only the Audit image's Docker build
+      context (`Backend/`) can be bundled, so backend source is in but `UI/` and the compose/CI YAML
+      above `Backend/` are not (code-map + ui-guide cover those); recorded in the ADR-0010 addendum.
+      Verified live: index grew to 336 chunks / 130 docs (174 source chunks newly embedded), and the
+      chat accurately quoted `AuditEventPublisher`'s topic/keying/`@Async` posture straight from the
+      source. Tested (`CodeChunkerTest`; `CorpusLoaderTest` asserts a `.java` + a Gradle file are
+      bundled; `RagIndexerTest` covers the code path); 90% gate + Spotless green.
 - [x] **Assistant explains the codebase + turns stack traces into IDE prompts — implemented.**
       Two changes on top of the RAG assistant so it can "explain everything" about the repo, not
       just the app's behaviour. (1) **Dataset:** a new file-by-file [`docs/code-map.md`](docs/code-map.md)

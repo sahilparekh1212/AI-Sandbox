@@ -27,6 +27,11 @@ class CorpusLoaderTest {
 		// assistant can answer "which files do X" and "which component/endpoint" questions.
 		assertThat(documents).anySatisfy(doc -> assertThat(doc.source()).isEqualTo("docs/code-map.md"));
 		assertThat(documents).anySatisfy(doc -> assertThat(doc.source()).isEqualTo("docs/ui-guide.md"));
+		// The backend SOURCE is bundled too (Audit/build.gradle processResources), so the assistant
+		// can read the actual deployed code — a .java file, and a Gradle build file, both present.
+		assertThat(documents).anySatisfy(doc -> assertThat(doc.source())
+			.endsWith("com/aisandbox/audit/event/AuditEventPublisher.java"));
+		assertThat(documents).anySatisfy(doc -> assertThat(doc.source()).isEqualTo("settings.gradle"));
 		assertThat(documents).allSatisfy(doc -> assertThat(doc.content()).isNotBlank());
 	}
 

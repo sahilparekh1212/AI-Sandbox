@@ -196,7 +196,11 @@ topic and Audit consumes and persists them. Files tied to this pipeline:
 - `rag/CorpusLoader.java` — loads the corpus from the classpath (`rag-corpus/**` = the README + docs/,
   plus `app-context.md`). **This is why adding a file under `Backend/docs/` adds it to the chat's
   knowledge**: the build copies `docs/**/*.md` into `rag-corpus/`.
-- `rag/MarkdownChunker.java` — splits documents into chunks by markdown heading.
+- `rag/MarkdownChunker.java` — splits markdown documents into chunks by heading.
+- `rag/CodeChunker.java` — splits bundled **source files** into chunks by size on line boundaries
+  (labelled with their line range). The corpus includes the backend source (Auth/Audit/common Java
+  + resources + Gradle files), bundled at build time, so the assistant can read the actual deployed
+  code — `RagIndexer` picks markdown vs code chunking per file. See ADR-0010's addendum.
 - `rag/EmbeddingClient.java` — the embeddings seam (interface).
 - `rag/VoyageEmbeddingClient.java` — Voyage AI embeddings implementation (`voyage-3.5-lite`).
 - `rag/VectorStore.java` — the vector-store Strategy interface.
