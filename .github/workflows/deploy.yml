@@ -104,6 +104,7 @@ jobs:
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
           VOYAGE_API_KEY=${{ secrets.VOYAGE_API_KEY }}
+          GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           AI_SANDBOX_TAG=latest
           EOF
           printf '%s\n' "${{ secrets.AUTH_RSA_PRIVATE_KEY }}" > auth_key.pem
@@ -138,4 +139,7 @@ jobs:
           curl -sf --retry 40 --retry-delay 10 --retry-all-errors --max-time 15 \
             -X POST "https://$DOMAIN/audit-api/mcp" -H 'Content-Type: application/json' \
             -d '{"jsonrpc":"2.0","id":1,"method":"ping"}' | grep -q '"result"'
+          # The published read-only Grafana (anonymous Viewer behind Caddy's /grafana route).
+          curl -sf --retry 40 --retry-delay 10 --retry-all-errors --max-time 15 \
+            "https://$DOMAIN/grafana/api/health" | grep -q '"database": *"ok"'
           echo "Deployed https://$DOMAIN"
