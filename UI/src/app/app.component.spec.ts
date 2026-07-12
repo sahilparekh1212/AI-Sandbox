@@ -34,12 +34,24 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('AI-Sandbox');
   });
 
-  it('should order the tabs with the feature tabs leading and About after Flashcards', () => {
+  it('should order the tabs About, Chat, Flashcards, Observability with matching URLs', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const tabs = [...compiled.querySelectorAll('.tabs a')].map((a) => a.textContent?.trim());
-    expect(tabs).toEqual(['Dashboard', 'Chat', 'Flashcards', 'About']);
+    const tabs = [...compiled.querySelectorAll<HTMLAnchorElement>('.tabs a')];
+    expect(tabs.map((a) => a.textContent?.trim())).toEqual([
+      'About',
+      'Chat',
+      'Flashcards',
+      'Observability',
+    ]);
+    // each tab's URL mirrors its (English) label
+    expect(tabs.map((a) => a.getAttribute('href'))).toEqual([
+      '/about',
+      '/chat',
+      '/flashcards',
+      '/observability',
+    ]);
   });
 
   it('should show a Login link (and no avatar) when signed out', () => {

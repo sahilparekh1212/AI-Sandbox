@@ -1,11 +1,9 @@
 <header class="app-header">
   <nav class="tabs">
-    <a routerLink="/audit" routerLinkActive="active">{{ 'nav.dashboard' | t }}</a>
-    <a routerLink="/assistant" routerLinkActive="active">{{ 'nav.chat' | t }}</a>
+    <a routerLink="/about" routerLinkActive="active">{{ 'nav.about' | t }}</a>
+    <a routerLink="/chat" routerLinkActive="active">{{ 'nav.chat' | t }}</a>
     <a routerLink="/flashcards" routerLinkActive="active">{{ 'nav.flashcards' | t }}</a>
-    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{
-      'nav.about' | t
-    }}</a>
+    <a routerLink="/observability" routerLinkActive="active">{{ 'nav.observability' | t }}</a>
   </nav>
 
   <div class="header-right">
