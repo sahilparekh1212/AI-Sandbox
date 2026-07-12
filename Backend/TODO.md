@@ -118,25 +118,31 @@ alternative" treatment as ADR-0005/0008.
       exist" answer). Note the volume also now carries the pgvector `rag_chunk` index; a
       lost index self-heals on restart via the content-hash indexer, so audit rows are the
       only data that actually needs the backup.
-- [ ] **Make RAG indexing non-blocking on startup (audit availability on deploy).** Since the
-      corpus now bundles the backend/UI source (repo-as-corpus), `RagIndexer` re-embeds hundreds
-      of chunks via Voyage at boot — and it's an `ApplicationRunner`, so it *blocks* the Audit
-      service from becoming ready (~1 min of `/audit-api` unavailability on every deploy/restart;
-      it's what made the first post-deploy smoke check race the boot — see the item below). Run
-      `index()` on a background thread so the app is ready immediately and RAG warms up async —
-      retrieval already degrades gracefully until `vectorStore.count() > 0` (chat falls back to the
-      un-retrieved prompt; MCP `search_knowledge` reports "not configured/empty"). Needs a test
-      tweak: `RagIndexerTest` calls `run(null)` and verifies embeddings synchronously, so split
-      into a directly-tested `index()` and a `run()` that just spawns the thread.
-- [ ] **Give the deploy smoke check patience for the slower audit boot.** The deploy workflow's
-      post-deploy smoke check assumed "homepage up ⇒ audit up" and gave the audit health + MCP
-      probes only a 50s allowance after the homepage probe; with the slower audit startup above,
-      a deploy can go red on a premature check even though prod is healthy a minute later (it did,
-      on the PR-#78 deploy — prod was verified live, only the badge was red; a re-run once audit
-      was up went green). Fix committed locally on `fix/deploy-smoke-check-patience` (health + MCP
-      probes get the same 40×10s ~7-min window as the homepage probe). Held from PR because a
-      `.github/`-only change may not trip the path-filtered required checks — decide how to land
-      it (broaden a filter, or admin-merge). Largely moot once RAG indexing is non-blocking above.
+- [x] **Make RAG indexing non-blocking on startup (audit availability on deploy) — implemented.**
+      `RagIndexer.run()` now just spawns a named daemon thread (`rag-indexer`) and returns, so the
+      `ApplicationRunner` no longer holds the Audit service's readiness hostage to hundreds of
+      Voyage embedding calls (~1 min of `/audit-api` unavailability on every deploy/restart with
+      the repo-as-corpus — it's what made the first post-deploy smoke check race the boot). The
+      try/catch safety net moved into a package-private `indexSafely()` between `run()` and
+      `index()`, so "indexing failure never fails (or now delays) the app" stays directly testable
+      without thread machinery. Retrieval degrades gracefully while the index warms (chat falls
+      back to the un-retrieved prompt; MCP `search_knowledge` reports "not configured/empty"), so
+      nothing user-facing needed to change. Test split exactly as this item predicted: the pipeline
+      tests call `index()` directly, the failure test calls `indexSafely()`, and a new
+      `runIndexesOnABackgroundThreadWithoutBlockingStartup` asserts `run()` hands off to the
+      background thread (Mockito `timeout()` verify — no sleeps). Full Audit suite + 90% coverage
+      gate + Spotless green.
+- [x] **Give the deploy smoke check patience for the slower audit boot — landed with the item
+      above.** The deploy workflow's post-deploy smoke check assumed "homepage up ⇒ audit up" and
+      gave the audit health + MCP probes only a 50s allowance after the homepage probe; with the
+      slow audit startup this item's sibling fixed, a deploy went red on a premature check even
+      though prod was healthy a minute later (the PR-#78 deploy — prod was verified live, only the
+      badge was red; a re-run once audit was up went green). Fix: health + MCP probes get the same
+      40×10s ~7-min window as the homepage probe. The "how to land a `.github/`-only change past
+      the path-filtered required checks" question answered itself: it shipped in the same PR as
+      the non-blocking-indexing Java change, which trips the required checks normally. Belt and
+      suspenders with the async fix — the patience covers any future slow-boot cause, not just
+      this one.
 - [ ] **Post-deploy verification + surface decisions.** Live click-through: Google OAuth,
       demo login, audit dashboard, `/mcp` handshake (`claude mcp add --transport http
       ai-sandbox https://<domain>/mcp`), Grafana. Decide deliberately: keep `demo`/`demo`

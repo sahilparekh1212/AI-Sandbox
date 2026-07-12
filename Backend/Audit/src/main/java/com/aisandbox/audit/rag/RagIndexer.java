@@ -14,7 +14,8 @@ import java.util.stream.Collectors;
 /**
  * Startup indexing pipeline: load corpus → chunk → embed what's new → sweep what's stale.
  * The seeder pattern precedent from {@code DemoDataSeeder}: run once on boot, log what
- * happened, never fail startup.
+ * happened, never fail startup — and never delay it either: the work runs on a background
+ * thread so the audit API is ready immediately while the index warms up.
  *
  * <p>Incremental by content hash — a chunk's id is a SHA-256 of its source + content, so an
  * unchanged doc costs zero embeddings API calls on restart, an edited section is re-embedded
@@ -50,6 +51,17 @@ public class RagIndexer implements ApplicationRunner {
 			log.info("RAG indexing skipped: not configured (set VOYAGE_API_KEY to enable)");
 			return;
 		}
+		// Index on a background thread: with the repo-as-corpus this is hundreds of embedding
+		// calls, and an ApplicationRunner blocking here would keep the whole audit API
+		// unavailable for ~a minute on every deploy/restart. Retrieval already degrades
+		// gracefully while the store fills (chat falls back to the un-retrieved prompt, MCP
+		// search reports empty), so readiness doesn't need to wait for it.
+		Thread indexerThread = new Thread(this::indexSafely, "rag-indexer");
+		indexerThread.setDaemon(true);
+		indexerThread.start();
+	}
+
+	void indexSafely() {
 		try {
 			index();
 		} catch (RuntimeException e) {
