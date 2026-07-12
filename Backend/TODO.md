@@ -84,32 +84,34 @@ alternative" treatment as ADR-0005/0008.
       https://ai-sandbox.sahilparekh1212.com (search/stats endpoints, modest VUs) answers
       "how does the $50 VM hold up" honestly; publish p95/throughput in the README next to
       the CI numbers.
-- [ ] **Set up the observability stack for prod — exposure built, live verification pending.**
-      Exposure decided and shipped: read-only Grafana published at
+- [x] **Set up the observability stack for prod — done, verified against the live deployment
+      (PR #86).** Exposure: read-only Grafana published at
       `https://ai-sandbox.sahilparekh1212.com/grafana` — a Caddy `handle /grafana*` route on the
       existing domain rather than the subdomain this item originally sketched (rides the existing
       cert, zero DNS changes; Grafana owns the prefix via `GF_SERVER_SERVE_FROM_SUB_PATH`), with
-      **anonymous Viewer** access (dashboards + Explore work; create/write/admin APIs verified
-      403) and the default `admin`/`admin` replaced by the `GRAFANA_ADMIN_PASSWORD` repo secret
-      shipped through `deploy.yml`, which also gained a `/grafana/api/health` smoke probe. The
-      whole shape was verified locally against the real Caddyfile + prod override
-      (DOMAIN=localhost): health, anonymous dashboard search, an anonymous Prometheus
-      `count(up==1)` = 2 through `/api/ds/query` (both scrape targets UP via `dns_sd_configs`),
-      and write-denial. About page/READMEs/deployment.md now link it. Still open — the
-      *deployed*-services half, only checkable post-merge through the public Grafana:
-      (a) Prometheus targets for Auth+Audit UP on the VM; (b) Loki receiving prod container logs
-      with the right `app` label (the PR-#64 bug class); (c) Tempo showing a login→Kafka→persist
-      flow as one trace; (d) the provisioned overview dashboard populated with real prod
-      traffic. Provider note: none needed — it's all self-hosted OSS.
-- [ ] **Prod monitoring runbook.** Grafana is now published read-only at `/grafana` (see the
-      observability item above — the "revisit trigger" fired and anonymous read-only won), and
-      its admin password is the `GRAFANA_ADMIN_PASSWORD` repo secret, not `admin`/`admin`.
-      Remaining runbook content: Prometheus/Loki/Tempo are still deliberately unpublished *and*
-      publish no host ports in prod (`ports: !reset []`), so the old `-L 3000:localhost:3000`
-      tunnel recipe never actually worked against prod — direct access is
-      `gcloud compute ssh ai-sandbox-vm --zone=us-east1-b` then curl the container over the
-      compose network (docs/deployment.md §10 now sketches this). Flesh out §10 into a proper
-      runbook if/when day-2 operations need more than the published Grafana's Explore.
+      **anonymous Viewer** access and the default `admin`/`admin` replaced by the
+      `GRAFANA_ADMIN_PASSWORD` repo secret shipped through `deploy.yml` (+ a `/grafana/api/health`
+      smoke probe, green on the deploy). The URL is environment-driven in the UI like the API
+      URLs (`/grafana` same-origin; a ui-nginx proxy mirrors Caddy's route locally, and local
+      Grafana got the same sub-path + anonymous posture), linked from the About page and a
+      **sticky bottom bar on the audit dashboard** (i18n'd in all nine languages). All four
+      *deployed*-services checks verified through the public Grafana post-deploy:
+      (a) Prometheus `up` = 1 for both Auth (:8085) and Audit (:8083) via `dns_sd_configs`;
+      (b) Loki's `app` label carries `auth-service` + `audit-service` (the PR-#64 bug class is
+      clean in prod); (c) a real demo login shows as **one Tempo trace across the Kafka hop**
+      (`http post /auth/login` → `audit.events send` → `audit.events receive`); (d) the overview
+      dashboard's rate query returns live series for both services. Write/create/admin APIs
+      verified denied for anonymous, locally and on prod. Usage guide with verified example
+      queries: [docs/observability.md](docs/observability.md).
+- [x] **Prod monitoring runbook — folded into the item above + docs.** The exposure decision
+      this item was waiting on fired (anonymous read-only won); the admin password is the
+      `GRAFANA_ADMIN_PASSWORD` repo secret. Access + operations are documented where they belong:
+      docs/deployment.md §10 (prod access posture; Prometheus/Loki/Tempo publish no host ports —
+      the old `-L 3000:localhost:3000` tunnel recipe never actually worked against prod; direct
+      access is `gcloud compute ssh` + curl over the compose network) and
+      [docs/observability.md](docs/observability.md) (day-2 usage: example PromQL/LogQL, tracing
+      a login across the Kafka hop, provisioning notes). Revisit trigger for a fuller runbook:
+      real day-2 operations needing more than the published Grafana's Explore.
 - [x] **GitHub → GCP deploy workflow — built (dormant until armed).**
       `.github/workflows/deploy.yml`: runs after a successful CD on main (plus
       `workflow_dispatch` for the first deploy), authenticates keyless via WIF, ships the
