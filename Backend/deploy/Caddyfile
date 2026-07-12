@@ -5,7 +5,20 @@
 # and the same-origin /auth-api + /audit-api reverse proxying with the X-Forwarded-* headers
 # Spring's OAuth redirect derivation depends on — Caddy adds X-Forwarded-Proto/Host for its
 # own hop by default, so the https scheme survives to the backends.
+#
+# /grafana is the one observability window deliberately published (read-only anonymous
+# Viewer — see the grafana env in docker-compose.prod.yml): a path, not a subdomain, so it
+# rides the existing cert and needs no extra DNS record. `handle` (not `handle_path`) keeps
+# the /grafana prefix on the upstream request — Grafana strips it itself via
+# GF_SERVER_SERVE_FROM_SUB_PATH. Prometheus/Loki/Tempo stay unpublished (SSH tunnel only).
 {$DOMAIN} {
 	encode gzip
-	reverse_proxy ui:80
+
+	handle /grafana* {
+		reverse_proxy grafana:3000
+	}
+
+	handle {
+		reverse_proxy ui:80
+	}
 }

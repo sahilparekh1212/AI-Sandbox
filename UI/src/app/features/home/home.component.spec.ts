@@ -51,10 +51,27 @@ describe('HomeComponent', () => {
     expect(tags.filter((t) => t === 'How').length).toBe(total);
   });
 
-  it('links each feature that declares a route into the app', () => {
+  it('links each feature that declares a route into the app, plus external counterparts', () => {
     const el = fixture.nativeElement as HTMLElement;
     const links = el.querySelectorAll('.feature a[href]');
     const routed = component.features.filter((f) => f.link).length;
-    expect(links.length).toBe(routed);
+    const external = component.features.filter((f) => f.extLink).length;
+    expect(links.length).toBe(routed + external);
+  });
+
+  it('links the live read-only Grafana from the observability decision and the dashboard feature', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    // getAttribute, not .href — the environment URL is same-origin relative ('/grafana')
+    // and .href would resolve it against the test origin.
+    const grafanaLinks = Array.from(el.querySelectorAll<HTMLAnchorElement>('a')).filter(
+      (a) => a.getAttribute('href') === component.grafanaUrl,
+    );
+    // one in the design-decision entry, one in the feature tour
+    expect(grafanaLinks.length).toBe(2);
+    // external links must open in a new tab without leaking the opener
+    for (const a of grafanaLinks) {
+      expect(a.target).toBe('_blank');
+      expect(a.rel).toContain('noopener');
+    }
   });
 });

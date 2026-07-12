@@ -58,6 +58,8 @@
   "audit.demoRange": "Le nombre doit être compris entre 1 et 500.",
   "audit.addDemoError": "Impossible d'ajouter des journaux démo — l'endpoint démo n'existe qu'en LOCAL/DEV.",
   "audit.demoAdded": "{count} journaux démo ajoutés.",
+  "audit.systemViewBlurb": "Ce tableau de bord est la vue métier — ce qu'ont fait les utilisateurs et les agents. Les métriques, journaux et traces des serveurs se trouvent dans la vue système.",
+  "audit.systemViewLink": "Ouvrir la vue système (Grafana) →",
 
   "assistant.hint": "Posez une question sur cette application — ses fonctionnalités, comment se connecter, ou ce que montrent les données d'audit. Les messages sont filtrés côté serveur ; ne collez pas d'identifiants ni de données personnelles.",
   "assistant.tryPrefix": "Essayez :",

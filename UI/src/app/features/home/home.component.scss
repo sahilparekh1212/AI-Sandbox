@@ -150,6 +150,12 @@
     background: rgba(47, 129, 247, 0.12);
     vertical-align: 1px;
   }
+
+  .decision-link {
+    display: inline-block;
+    margin-top: 0.35rem;
+    font-weight: 600;
+  }
 }
 
 .footnote {
@@ -183,6 +189,13 @@
 
   a {
     font-weight: 600;
+  }
+
+  // The external counterpart link (e.g. the live Grafana) on its own line under the
+  // in-app route link.
+  a.ext {
+    display: block;
+    margin-top: 0.35rem;
   }
 }
 

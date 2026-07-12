@@ -58,6 +58,8 @@
   "audit.demoRange": "数値は 1 から 500 の間にしてください。",
   "audit.addDemoError": "デモログを追加できませんでした — デモエンドポイントは LOCAL/DEV にのみ存在します。",
   "audit.demoAdded": "{count} 件のデモログを追加しました。",
+  "audit.systemViewBlurb": "このダッシュボードはドメインビュー — ユーザーとエージェントが何をしたかを示します。サーバーのメトリクス・ログ・トレースはシステムビューにあります。",
+  "audit.systemViewLink": "システムビューを開く (Grafana) →",
 
   "assistant.hint": "このアプリについて質問してください — 機能、サインイン方法、監査データが示す内容など。メッセージはサーバー側で検査されます。認証情報や個人データを貼り付けないでください。",
   "assistant.tryPrefix": "例：",

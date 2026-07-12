@@ -51,6 +51,11 @@
             <h4>{{ d.title }}</h4>
             <p><span class="tag">Why</span>{{ d.why }}</p>
             <p><span class="tag">How</span>{{ d.how }}</p>
+            @if (d.link) {
+              <a class="decision-link" [href]="d.link.href" target="_blank" rel="noopener">{{
+                d.link.label
+              }}</a>
+            }
           </article>
         }
       </div>
@@ -69,6 +74,11 @@
         <p>{{ f.blurb }}</p>
         @if (f.link) {
           <a [routerLink]="f.link.to">{{ f.link.label }}</a>
+        }
+        @if (f.extLink) {
+          <a class="ext" [href]="f.extLink.href" target="_blank" rel="noopener">{{
+            f.extLink.label
+          }}</a>
         }
       </article>
     }

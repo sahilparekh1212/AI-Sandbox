@@ -17,6 +17,9 @@ sandbox for practicing the patterns a real system needs, not a toy CRUD demo.
 - **Ask the app about itself:** the Chat tab answers questions about the architecture, the ADRs,
   and even the deployed source code (the RAG corpus bundles the backend + UI source at build
   time, so the assistant quotes the exact code that's running).
+- **Live system dashboards:** https://ai-sandbox.sahilparekh1212.com/grafana — the deployment's
+  own Grafana, published read-only (metrics, logs and traces of the very services answering your
+  requests; the audit dashboard in-app is the domain view of the same system).
 - **Public MCP server** — point any MCP client at the deployment and search its knowledge base:
 
   ```bash

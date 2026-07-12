@@ -202,6 +202,17 @@ line, metric, and trace is tagged with the emitting pod, so a signal can be trac
 instance once >1 replica runs. First production task on this front: capture a dashboard from a
 real load run (the open observability item in the TODO).
 
+**Access on the live deployment [built]:** Grafana is published **read-only** at
+https://ai-sandbox.sahilparekh1212.com/grafana — anonymous visitors get the Viewer role
+(dashboards + Explore, no edits; sign-up disabled), routed by Caddy's `/grafana` handle with
+Grafana serving the sub-path itself (`GF_SERVER_SERVE_FROM_SUB_PATH`). The admin password is
+the `GRAFANA_ADMIN_PASSWORD` repo secret, shipped to the VM's `.env` by `deploy.yml` (no more
+`admin`/`admin`). Prometheus (:9090), Loki (:3100) and Tempo (:3200) publish **no** host ports
+in prod (`ports: !reset []`); to reach one directly, SSH into the VM
+(`gcloud compute ssh ai-sandbox-vm --zone=us-east1-b`) and curl the container over the compose
+network, or temporarily tunnel via `docker exec`. For everyday inspection, the published
+Grafana's Explore covers all three datasources.
+
 ---
 
 ## 11. First-deploy checklist

@@ -6,8 +6,9 @@
 # What it changes vs the local stack:
 #   - Caddy terminates TLS on 80/443 (auto Let's Encrypt for $DOMAIN) in front of the ui
 #     nginx; every other published port is withdrawn (`!reset`) — the proxy chain is the
-#     only way in, and Grafana/Prometheus/etc. are reachable via SSH tunnel only, e.g.
-#     `gcloud compute ssh ai-sandbox-vm -- -L 3000:localhost:3000`.
+#     only way in. Grafana is published read-only at https://$DOMAIN/grafana (anonymous
+#     Viewer, see its environment below); Prometheus/Loki/Tempo stay SSH-tunnel only, e.g.
+#     `gcloud compute ssh ai-sandbox-vm -- -L 9090:localhost:9090`.
 #   - PROD Spring profiles: WARN logging, no demo-data seeder, no demo-log endpoint (both
 #     are LOCAL/DEV-gated beans). The recruiter demo login stays — it's property-gated
 #     (auth.demo.enabled, default true), a deliberate keep for a portfolio deployment.
@@ -96,6 +97,17 @@ services:
   grafana:
     restart: unless-stopped
     ports: !reset []
+    environment:
+      # Published read-only at https://$DOMAIN/grafana via Caddy (see deploy/Caddyfile):
+      # anonymous visitors get the Viewer role (dashboards + Explore, no edits/admin),
+      # sign-up stays off, and the admin password comes from a repo secret instead of the
+      # local stack's admin/admin. ROOT_URL + SERVE_FROM_SUB_PATH make Grafana itself own
+      # the /grafana prefix, so Caddy proxies without rewriting.
+      GF_SERVER_ROOT_URL: https://${DOMAIN:?}/grafana
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
 
 volumes:
   caddy-data:

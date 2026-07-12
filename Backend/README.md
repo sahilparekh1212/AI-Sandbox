@@ -354,6 +354,15 @@ latency, logs, traces). It complements the app's own audit dashboard, which is t
 **domain view** — what users and agents actually did, fed by the event-sourced audit trail.
 Same deployment, two different questions.
 
+The production deployment publishes its Grafana **read-only** at
+**https://ai-sandbox.sahilparekh1212.com/grafana** (anonymous Viewer behind the Caddy
+`/grafana` route — dashboards and Explore work, nothing is editable). Prometheus, Loki and
+Tempo themselves stay unpublished.
+
+**Usage guide with example queries** (PromQL, LogQL, tracing a login across the Kafka hop, a
+2-minute end-to-end walkthrough): [docs/observability.md](docs/observability.md). Every example
+query in it was verified against the running stack.
+
 | Tool       | Role                                | Source from each service                        |
 |------------|-------------------------------------|---------------------------------------------------|
 | Prometheus | Scrapes metrics                     | Micrometer `/actuator/prometheus`                |
