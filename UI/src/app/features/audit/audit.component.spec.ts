@@ -280,4 +280,16 @@ describe('AuditComponent', () => {
     req.flush([]);
     expect(component.timelineWindow()).toBe('7d');
   });
+
+  it('links the live Grafana system view from a sticky bottom bar', () => {
+    flushInitialLoad();
+
+    const bar = (fixture.nativeElement as HTMLElement).querySelector('.system-view-bar');
+    expect(bar).withContext('sticky system-view bar rendered').not.toBeNull();
+    const link = bar!.querySelector<HTMLAnchorElement>('a');
+    expect(link!.href).toBe(component.grafanaUrl);
+    // external link must open in a new tab without leaking the opener
+    expect(link!.target).toBe('_blank');
+    expect(link!.rel).toContain('noopener');
+  });
 });

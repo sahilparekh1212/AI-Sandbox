@@ -58,6 +58,8 @@
   "audit.demoRange": "数量必须在 1 到 500 之间。",
   "audit.addDemoError": "无法添加演示日志 — 演示接口仅在 LOCAL/DEV 中存在。",
   "audit.demoAdded": "已添加 {count} 条演示日志。",
+  "audit.systemViewBlurb": "此仪表盘是领域视图——用户和智能体做了什么。服务器指标、日志和链路追踪在系统视图中。",
+  "audit.systemViewLink": "打开系统视图（Grafana）→",
 
   "assistant.hint": "询问有关本应用的问题 — 它的功能、如何登录，或审计数据显示了什么。消息会在服务器端进行筛查；请勿粘贴凭据或个人数据。",
   "assistant.tryPrefix": "试试：",

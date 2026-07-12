@@ -46,6 +46,10 @@ export class AuditComponent implements OnInit {
   private readonly audit = inject(AuditService);
   private readonly translate = inject(TranslateService);
 
+  // The production deployment's read-only Grafana — the system-view counterpart to this
+  // page's domain view (linked from the sticky bottom bar).
+  readonly grafanaUrl = 'https://ai-sandbox.sahilparekh1212.com/grafana';
+
   readonly filterForm = this.fb.nonNullable.group({
     entityType: [''],
     action: [''],

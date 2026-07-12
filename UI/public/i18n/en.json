@@ -58,6 +58,8 @@
   "audit.demoRange": "Count must be between 1 and 500.",
   "audit.addDemoError": "Could not add demo logs — the demo endpoint only exists in LOCAL/DEV.",
   "audit.demoAdded": "Added {count} demo logs.",
+  "audit.systemViewBlurb": "This dashboard is the domain view — what users and agents did. Server metrics, logs and traces live in the system view.",
+  "audit.systemViewLink": "Open the system view (Grafana) →",
 
   "assistant.hint": "Ask about this application — its features, how to sign in, or what the audit data shows. Messages are screened server-side; don't paste credentials or personal data.",
   "assistant.tryPrefix": "Try:",

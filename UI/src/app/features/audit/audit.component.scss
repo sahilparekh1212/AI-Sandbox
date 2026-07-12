@@ -299,6 +299,31 @@
   .error {
     color: var(--danger);
   }
+
+  // Persistent hand-off to the system view: sticks to the bottom of the viewport while the
+  // audit table scrolls (same pattern as the About page's contact strip — opaque --canvas so
+  // rows pass cleanly underneath), pointing at the deployment's read-only Grafana. This page
+  // is the domain view; that link is the system view of the same deployment.
+  .system-view-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.75rem;
+    margin-top: 1rem;
+    padding: 0.6rem 0.9rem;
+    background: var(--canvas);
+    border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+
+    a {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+  }
 }
 
 // Phones: stack the filter/demo controls full-width for easy tapping, and turn the audit table
@@ -327,6 +352,12 @@
     .stats .bar-row {
       grid-template-columns: 4.5rem 1fr 2rem;
       font-size: 0.8rem;
+    }
+
+    // The docked bar's blurb wraps to several lines on a narrow screen and eats too much
+    // of it — keep just the link; the About page carries the full domain-vs-system story.
+    .system-view-bar span {
+      display: none;
     }
 
     // Table → cards.

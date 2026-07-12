@@ -58,6 +58,8 @@
   "audit.demoRange": "El número debe estar entre 1 y 500.",
   "audit.addDemoError": "No se pudieron añadir registros demo — el endpoint demo solo existe en LOCAL/DEV.",
   "audit.demoAdded": "Se añadieron {count} registros demo.",
+  "audit.systemViewBlurb": "Este panel es la vista de dominio: lo que hicieron los usuarios y los agentes. Las métricas, los registros y las trazas de los servidores están en la vista de sistema.",
+  "audit.systemViewLink": "Abrir la vista de sistema (Grafana) →",
 
   "assistant.hint": "Pregunta sobre esta aplicación — sus funciones, cómo iniciar sesión o qué muestran los datos de auditoría. Los mensajes se filtran en el servidor; no pegues credenciales ni datos personales.",
   "assistant.tryPrefix": "Prueba:",
