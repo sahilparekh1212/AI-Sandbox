@@ -11,7 +11,7 @@ export const environment = {
   grafanaUrl: '/grafana',
   // GA4 Measurement ID (public by design — it ships in every page's HTML on any GA site).
   // Empty string disables analytics entirely: no script load, no network calls.
-  gaMeasurementId: '',
+  gaMeasurementId: 'G-Q84781MSCE',
   // Sentry DSN (publishable, not a secret — it can only ingest events, not read them).
   // Empty string disables Sentry entirely: no init, default Angular ErrorHandler.
   sentryDsn: '',
