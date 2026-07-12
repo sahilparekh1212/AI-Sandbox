@@ -118,6 +118,31 @@ alternative" treatment as ADR-0005/0008.
       exist" answer). Note the volume also now carries the pgvector `rag_chunk` index; a
       lost index self-heals on restart via the content-hash indexer, so audit rows are the
       only data that actually needs the backup.
+- [x] **Make RAG indexing non-blocking on startup (audit availability on deploy) — implemented.**
+      `RagIndexer.run()` now just spawns a named daemon thread (`rag-indexer`) and returns, so the
+      `ApplicationRunner` no longer holds the Audit service's readiness hostage to hundreds of
+      Voyage embedding calls (~1 min of `/audit-api` unavailability on every deploy/restart with
+      the repo-as-corpus — it's what made the first post-deploy smoke check race the boot). The
+      try/catch safety net moved into a package-private `indexSafely()` between `run()` and
+      `index()`, so "indexing failure never fails (or now delays) the app" stays directly testable
+      without thread machinery. Retrieval degrades gracefully while the index warms (chat falls
+      back to the un-retrieved prompt; MCP `search_knowledge` reports "not configured/empty"), so
+      nothing user-facing needed to change. Test split exactly as this item predicted: the pipeline
+      tests call `index()` directly, the failure test calls `indexSafely()`, and a new
+      `runIndexesOnABackgroundThreadWithoutBlockingStartup` asserts `run()` hands off to the
+      background thread (Mockito `timeout()` verify — no sleeps). Full Audit suite + 90% coverage
+      gate + Spotless green.
+- [x] **Give the deploy smoke check patience for the slower audit boot — landed with the item
+      above.** The deploy workflow's post-deploy smoke check assumed "homepage up ⇒ audit up" and
+      gave the audit health + MCP probes only a 50s allowance after the homepage probe; with the
+      slow audit startup this item's sibling fixed, a deploy went red on a premature check even
+      though prod was healthy a minute later (the PR-#78 deploy — prod was verified live, only the
+      badge was red; a re-run once audit was up went green). Fix: health + MCP probes get the same
+      40×10s ~7-min window as the homepage probe. The "how to land a `.github/`-only change past
+      the path-filtered required checks" question answered itself: it shipped in the same PR as
+      the non-blocking-indexing Java change, which trips the required checks normally. Belt and
+      suspenders with the async fix — the patience covers any future slow-boot cause, not just
+      this one.
 - [ ] **Post-deploy verification + surface decisions.** Live click-through: Google OAuth,
       demo login, audit dashboard, `/mcp` handshake (`claude mcp add --transport http
       ai-sandbox https://<domain>/mcp`), Grafana. Decide deliberately: keep `demo`/`demo`
@@ -280,6 +305,33 @@ should populate it instead.
       previously read ambiguously as a caption on the first chart), and confirmed the "Add demo
       logs" input+button stay hidden in PROD (the `/api/v1/meta/features` probe derives `demoData`
       from the LOCAL/DEV-only `DemoDataController` bean's presence).
+- [ ] **Assistant + flashcards answer in the user's selected language; add more locales.** The UI
+      chrome is translated (i18n above), but the LLM features still reply in English. Thread the
+      current UI language (`TranslateService.lang`) into the chat + flashcard requests and have the
+      system prompt instruct the model to answer in that language — grounding/allowlist/screener
+      posture unchanged, only the output language. Also extend the switcher with new
+      `public/i18n/<code>.json` dictionaries + `LANGUAGES` entries: **Arabic, Hebrew, Tamil, Telugu,
+      Kannada, Malayalam, Marathi, Bangla (Bengali), Urdu** (Korean and Spanish already ship).
+      Note: Arabic, Hebrew and Urdu are **RTL** — set `dir` on the document alongside `lang` and
+      re-check the layout (sticky header, filter form, chat bubbles, the mobile card table) in RTL.
+- [ ] **Mobile design round 2 — cut the scrolling (hamburger / drawers).** The responsive pass made
+      everything usable on phones but *tall*: the nav, the stacked full-width filter form, and the
+      card-per-row audit table mean a lot of vertical scrolling. Collapse the nav into a hamburger
+      menu (the language switcher + avatar can live in it too), make the dashboard filters a
+      collapsible "Filters" drawer/accordion instead of an always-expanded stacked form, and
+      condense the stat charts on small screens. Re-verify with Playwright mobile emulation +
+      Lighthouse.
+- [ ] **Bug: header still shows "Login" after signing in via a returnUrl (avatar doesn't appear).**
+      Repro: open a guarded page (e.g. Flashcards) while signed out → bounced to
+      `/login?returnUrl=/flashcards` → sign in → land back on `/flashcards` (not `/profile`) → the
+      header keeps showing "Login" instead of the avatar until a hard reload or visiting `/profile`.
+      Root cause: `AuthService.isAuthenticated` is a computed over the `_profile` signal plus the
+      *non-reactive* `storage.accessToken`, and `_profile` is only ever populated by the `/profile`
+      page's `loadProfile()`. A login that doesn't land on `/profile` never sets `_profile`, so the
+      computed doesn't re-run and the header stays stale. Fix: load the profile right after a
+      successful login (in `demoLogin`/`consumeOAuthFragment`, after storing tokens) so `_profile`
+      is set and the header updates reactively — and/or make auth reactivity token-driven (a signal
+      set on token store/clear so `isAuthenticated` recomputes on login/logout regardless of route).
 - [x] **GitHub-like dark theme UI restyle — implemented (PR #49).** One design-token layer in
       `styles.scss` (GitHub Primer dark palette as CSS custom properties: canvas `#0d1117`,
       borders `#30363d`, accent `#2f81f7`, plus text/status/button tokens) with base element
