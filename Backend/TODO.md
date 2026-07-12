@@ -299,6 +299,33 @@ should populate it instead.
       previously read ambiguously as a caption on the first chart), and confirmed the "Add demo
       logs" input+button stay hidden in PROD (the `/api/v1/meta/features` probe derives `demoData`
       from the LOCAL/DEV-only `DemoDataController` bean's presence).
+- [ ] **Assistant + flashcards answer in the user's selected language; add more locales.** The UI
+      chrome is translated (i18n above), but the LLM features still reply in English. Thread the
+      current UI language (`TranslateService.lang`) into the chat + flashcard requests and have the
+      system prompt instruct the model to answer in that language — grounding/allowlist/screener
+      posture unchanged, only the output language. Also extend the switcher with new
+      `public/i18n/<code>.json` dictionaries + `LANGUAGES` entries: **Arabic, Hebrew, Tamil, Telugu,
+      Kannada, Malayalam, Marathi, Bangla (Bengali), Urdu** (Korean and Spanish already ship).
+      Note: Arabic, Hebrew and Urdu are **RTL** — set `dir` on the document alongside `lang` and
+      re-check the layout (sticky header, filter form, chat bubbles, the mobile card table) in RTL.
+- [ ] **Mobile design round 2 — cut the scrolling (hamburger / drawers).** The responsive pass made
+      everything usable on phones but *tall*: the nav, the stacked full-width filter form, and the
+      card-per-row audit table mean a lot of vertical scrolling. Collapse the nav into a hamburger
+      menu (the language switcher + avatar can live in it too), make the dashboard filters a
+      collapsible "Filters" drawer/accordion instead of an always-expanded stacked form, and
+      condense the stat charts on small screens. Re-verify with Playwright mobile emulation +
+      Lighthouse.
+- [ ] **Bug: header still shows "Login" after signing in via a returnUrl (avatar doesn't appear).**
+      Repro: open a guarded page (e.g. Flashcards) while signed out → bounced to
+      `/login?returnUrl=/flashcards` → sign in → land back on `/flashcards` (not `/profile`) → the
+      header keeps showing "Login" instead of the avatar until a hard reload or visiting `/profile`.
+      Root cause: `AuthService.isAuthenticated` is a computed over the `_profile` signal plus the
+      *non-reactive* `storage.accessToken`, and `_profile` is only ever populated by the `/profile`
+      page's `loadProfile()`. A login that doesn't land on `/profile` never sets `_profile`, so the
+      computed doesn't re-run and the header stays stale. Fix: load the profile right after a
+      successful login (in `demoLogin`/`consumeOAuthFragment`, after storing tokens) so `_profile`
+      is set and the header updates reactively — and/or make auth reactivity token-driven (a signal
+      set on token store/clear so `isAuthenticated` recomputes on login/logout regardless of route).
 - [x] **GitHub-like dark theme UI restyle — implemented (PR #49).** One design-token layer in
       `styles.scss` (GitHub Primer dark palette as CSS custom properties: canvas `#0d1117`,
       borders `#30363d`, accent `#2f81f7`, plus text/status/button tokens) with base element
