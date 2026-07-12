@@ -157,12 +157,10 @@ alternative" treatment as ADR-0005/0008.
       in prod (recruiter-friendly) vs drop it; the demo-log generator and seeder already
       don't exist outside LOCAL/DEV.
 
-### Dashboard — make it meaningful and relevant (NEXT UP)
+### Dashboard — make it meaningful and relevant (DONE)
 The prod dashboard is sparse because the audit trail only records Auth's `LOGIN` events; for
 a project that's fundamentally an AI sandbox (chat, flashcards, RAG, MCP) it should show what
-the app actually does. Four items; items 1 (AI features emit domain events) and 2 (the time
-dimension) have landed, so item 3 (KPI cards — cheap now the aggregations exist) is next up.
-Context: the
+the app actually does. **All four items have landed — this section is complete.** Context: the
 "Add demo logs" button is now hidden in prod (a LOCAL/DEV-only affordance — see the
 `/api/v1/meta/features` capability probe), so prod won't be padded with dummy rows; real usage
 should populate it instead.
@@ -217,13 +215,24 @@ should populate it instead.
       (Audit suite, 90% gate, Spotless green); 3 new UI specs incl. a zero-fill axis assertion
       (52 unit tests green, lint/format/prod build clean — `anyComponentStyle` warning budget
       bumped 4→6kB since the audit dashboard's legitimate styles now exceed it; error stays 8kB).
-- [ ] **3. KPI summary cards on top.** A headline row: total events (24h), busiest feature,
-      blocked/error rate, unique event types — instant "what's happening", the standard
-      dashboard pattern. Cheap once the aggregation endpoints exist.
-- [ ] **4. Frame it against the observability stack.** Position this dashboard as the
-      *domain/business* view ("what users and agents did") complementing Grafana's *system*
-      view ("how the servers are performing") — a short About/README note plus optionally a
-      link out to Grafana. The contrast is itself an interview talking point.
+- [x] **3. KPI summary cards on top — implemented.** Four cards above the stats panel: total
+      events, busiest feature (top byEntityType bucket), blocked/error rate, and distinct event
+      types — all over a fixed 24h window, deliberately *independent of the filter form* (the
+      cards answer "what's happening on this deployment"; the filtered panel below answers "what
+      matches my filter"). Exactly as cheap as predicted: zero new backend — three parallel
+      `/stats` calls reuse the existing aggregation endpoint, with blocked/errored counted via
+      the same details-contains filter the search box uses (`blocked=true` / `error=` are
+      detail-field facts, not actions). Cards refresh after demo-log generation; labels
+      translated in all nine dictionaries. Verified live before shipping (Japanese locale): 236
+      events / busiest `User` / 21.6% blocked-error / 7 event types over real local data; 55 UI
+      unit tests green (incl. a KPI computation spec); deployed and spot-checked on prod.
+- [x] **4. Frame it against the observability stack — done.** The contrast now lives in three
+      places: a "Domain dashboard vs system observability" design-decision entry on the About
+      page (why two questions need two views; how the event-sourced audit trail feeds one and
+      Grafana/Prometheus/Loki/Tempo the other), the Dashboard feature-tour blurb, and a note
+      atop the backend README's observability section. No Grafana link-out — it's deliberately
+      unpublished (SSH-tunnel only, see the runbook item), so the text names the stack instead
+      of dead-linking it.
 
 ### Feature: RAG MCP server with a vector DB
 - [x] **Assistant reads the actual backend source (repo-as-corpus) — implemented.** Extended the
@@ -350,17 +359,20 @@ should populate it instead.
       collapsible "Filters" drawer/accordion instead of an always-expanded stacked form, and
       condense the stat charts on small screens. Re-verify with Playwright mobile emulation +
       Lighthouse.
-- [ ] **Bug: header still shows "Login" after signing in via a returnUrl (avatar doesn't appear).**
-      Repro: open a guarded page (e.g. Flashcards) while signed out → bounced to
-      `/login?returnUrl=/flashcards` → sign in → land back on `/flashcards` (not `/profile`) → the
-      header keeps showing "Login" instead of the avatar until a hard reload or visiting `/profile`.
-      Root cause: `AuthService.isAuthenticated` is a computed over the `_profile` signal plus the
-      *non-reactive* `storage.accessToken`, and `_profile` is only ever populated by the `/profile`
-      page's `loadProfile()`. A login that doesn't land on `/profile` never sets `_profile`, so the
-      computed doesn't re-run and the header stays stale. Fix: load the profile right after a
-      successful login (in `demoLogin`/`consumeOAuthFragment`, after storing tokens) so `_profile`
-      is set and the header updates reactively — and/or make auth reactivity token-driven (a signal
-      set on token store/clear so `isAuthenticated` recomputes on login/logout regardless of route).
+- [x] **Bug: header still shows "Login" after signing in via a returnUrl — fixed via the
+      token-driven option.** Root cause exactly as diagnosed here: `AuthService.isAuthenticated`
+      was a computed over the `_profile` signal plus the *non-reactive* `storage.accessToken`,
+      and `_profile` is only populated by `/profile`'s `loadProfile()` — so a login landing
+      anywhere else never re-ran the computed and the header stayed on "Login" until a hard
+      reload. Of the two fixes this item offered, took the token-driven one (strictly more
+      general — it covers OAuth-fragment logins, interceptor refreshes, and logout/clearSession
+      too, with no extra `/auth/me` round-trip): a private `_tokenVersion` signal in
+      `AuthService` is bumped by every token store/clear (all token mutations already flow
+      through the service), and the `isAuthenticated` computed reads it. Verified live with this
+      item's exact repro: signed-out → `/flashcards` → bounced to
+      `/login?returnUrl=%2Fflashcards` → sign in → landed back on `/flashcards` with the avatar
+      shown immediately — no reload, no `/profile` visit. New specs assert the reactive flip on
+      demo login, the OAuth fragment handoff, and `clearSession()`.
 - [x] **GitHub-like dark theme UI restyle — implemented (PR #49).** One design-token layer in
       `styles.scss` (GitHub Primer dark palette as CSS custom properties: canvas `#0d1117`,
       borders `#30363d`, accent `#2f81f7`, plus text/status/button tokens) with base element
