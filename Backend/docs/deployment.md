@@ -94,7 +94,8 @@ environment, provide:
 | Redis password **[env]** | Auth | If the managed Redis requires auth |
 | `ANTHROPIC_API_KEY` | Audit | Enables the LLM assistant + flashcards; **server-side only**, never reaches the browser. Absent ⇒ those endpoints 503, rest of the app unaffected |
 | Grafana admin password | Grafana | Dashboard access; reset to the secret on every deploy (`deploy.yml`) since the env var only applies on first DB init |
-| `SENTRY_AUTH_TOKEN` | Grafana | Lets the provisioned Sentry datasource read UI error data (org/project/event read scopes only) |
+| `SENTRY_AUTH_TOKEN` | Grafana | Lets the provisioned Sentry datasource read error data from all three Sentry projects (org/project/event read scopes only) |
+| `SENTRY_DSN_AUTH` / `SENTRY_DSN_AUDIT` | Auth / Audit | Per-service Sentry projects for unhandled-exception capture; empty ⇒ SDK disabled, app unaffected |
 
 In production, source these from the platform's secret manager (OpenShift Secrets backed by
 Vault / Sealed Secrets / External Secrets Operator) rather than hand-applied files.

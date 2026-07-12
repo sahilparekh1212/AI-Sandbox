@@ -177,6 +177,8 @@ services:
       # fails OAuth2ClientProperties validation ("Client id ... must not be empty") at startup.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-your-client-id}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-your-client-secret}
+      # Sentry (per-service project). Empty (the default) = SDK disabled.
+      SENTRY_DSN: ${SENTRY_DSN_AUTH:-}
     ports:
       - "8085:8085"
     depends_on:
@@ -243,6 +245,8 @@ services:
       # in this stack (LOCAL/tests default to the in-memory store instead).
       VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
       RAG_VECTOR_STORE: pgvector
+      # Sentry (per-service project). Empty (the default) = SDK disabled.
+      SENTRY_DSN: ${SENTRY_DSN_AUDIT:-}
     ports:
       - "8083:8083"
     depends_on:
