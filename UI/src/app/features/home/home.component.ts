@@ -10,6 +10,8 @@ interface Decision {
   title: string;
   why: string;
   how: string;
+  /** Optional external proof link (e.g. the live Grafana) rendered under the why/how pair. */
+  link?: { label: string; href: string };
 }
 
 interface DecisionGroup {
@@ -22,6 +24,8 @@ interface Feature {
   title: string;
   blurb: string;
   link?: { label: string; to: string };
+  /** External counterpart to `link` — opens outside the SPA (e.g. the live Grafana). */
+  extLink?: { label: string; href: string };
 }
 
 @Component({
@@ -33,6 +37,9 @@ interface Feature {
 export class HomeComponent {
   readonly repoUrl = 'https://github.com/sahilparekh1212/AI-Sandbox';
   readonly linkedInUrl = 'https://www.linkedin.com/in/sahilparekh1212/';
+  // The production deployment's read-only Grafana (anonymous Viewer behind Caddy's
+  // /grafana route) — the live "system view" the observability decision talks about.
+  readonly grafanaUrl = 'https://ai-sandbox.sahilparekh1212.com/grafana';
 
   // Which "Design decisions" group is shown; the others stay in the DOM but hidden, so
   // switching is instant (no re-render) and there's no long scroll through every group.
@@ -132,7 +139,11 @@ export class HomeComponent {
         {
           title: 'Domain dashboard vs system observability',
           why: 'Two different questions need two different views: "what did users and agents do?" is a business/domain question, while "how are the servers performing?" is a system question — conflating them buries one in the other.',
-          how: 'The audit dashboard is the domain view, fed by the event-sourced audit trail (every feature emits a domain event; Audit is the sink). The system view is a separate self-hosted Grafana/Prometheus/Loki/Tempo stack: request rates, p95/p99 latency, logs, and traces that follow a login across the Kafka hop.',
+          how: 'The audit dashboard is the domain view, fed by the event-sourced audit trail (every feature emits a domain event; Audit is the sink). The system view is a separate self-hosted Grafana/Prometheus/Loki/Tempo stack: request rates, p95/p99 latency, logs, and traces that follow a login across the Kafka hop — published read-only from the production deployment.',
+          link: {
+            label: 'Open the live Grafana (read-only) →',
+            href: this.grafanaUrl,
+          },
         },
         {
           title: 'Guarded LLM proxy with a one-class allowlist',
@@ -196,6 +207,7 @@ export class HomeComponent {
       blurb:
         'The domain view of the system — what users and agents did. KPI cards, events-over-time, and database-side aggregations over the event-sourced audit trail, complementing the Grafana/Prometheus/Loki/Tempo stack’s system view of how the servers are performing.',
       link: { label: 'Open the dashboard →', to: '/audit' },
+      extLink: { label: 'Open the system view (Grafana) →', href: this.grafanaUrl },
     },
     {
       title: 'Chat',
