@@ -6,16 +6,16 @@ The in-repo rename (`AI-Sandbox`/`ai-sandbox`/`com.aisandbox` → `ask-app`/`com
 proprietary LICENSE are done in code. These external steps are what actually make the new name/URL
 live — I can't do them for you:
 
-- [ ] **GitHub: rename the repo** `AI-Sandbox` → `ask-app` (Settings → General → Rename). GitHub
+- [x] **GitHub: rename the repo** `AI-Sandbox` → `ask-app` (Settings → General → Rename). GitHub
       auto-redirects the old URLs, so existing links/clones keep working.
-- [ ] **Update the local remote** after the rename:
+- [x] **Update the local remote** after the rename:
       `git remote set-url origin https://github.com/sahilparekh1212/ask-app.git`
       (the old URL redirects, so a push works either way — this is just tidiness).
-- [ ] **Porkbun DNS**: add an A record `ask-app` → `34.139.83.81`. Keep the `ai-sandbox` A record
-      too if you want the old URL to stay alive as a legacy link.
-- [ ] **GitHub repo variable** `DEPLOY_DOMAIN` → `ask-app.sahilparekh1212.com` (Settings → Secrets
+- [x] **Porkbun DNS**: add an A record `ask-app` → `34.139.83.81`. Keep the `ai-sandbox` A record
+      too if you want the old URL to stay alive as a legacy link. (Verified resolving via 8.8.8.8/1.1.1.1.)
+- [x] **GitHub repo variable** `DEPLOY_DOMAIN` → `ask-app.sahilparekh1212.com` (Settings → Secrets
       and variables → Actions → Variables). The deploy workflow + Caddy read this for the cert/host.
-- [ ] **Google Cloud OAuth**: add redirect URI
+- [x] **Google Cloud OAuth**: add redirect URI
       `https://ask-app.sahilparekh1212.com/auth-api/login/oauth2/code/google` to "Web client 1"
       (keep the old one if you keep the old domain).
 - [ ] **Cut over**: merge to `main` → CD publishes `ghcr.io/sahilparekh1212/ask-app/*` images →
