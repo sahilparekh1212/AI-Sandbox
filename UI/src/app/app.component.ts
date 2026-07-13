@@ -1,12 +1,11 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, afterNextRender, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { filter, fromEvent, map, merge } from 'rxjs';
 
 import { AuthService } from './core/auth/auth.service';
 import { TranslatePipe } from './core/i18n/translate.pipe';
 import { LanguageSwitcherComponent } from './shared/language-switcher/language-switcher.component';
-import { environment } from '../environments/environment';
 
 /** A primary section: an icon-rail entry that also keys its contextual sidebar. */
 interface Section {
@@ -44,6 +43,12 @@ const ICON = {
     'M10.561 8.073a6 6 0 0 1 3.432 5.142.75.75 0 1 1-1.498.07 4.5 4.5 0 0 0-8.99 0 .75.75 0 0 1-1.498-.07 6 6 0 0 1 3.431-5.142 3.999 3.999 0 1 1 5.123 0ZM10.5 5a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z',
   signin:
     'M2 2.75C2 1.784 2.784 1 3.75 1h2.5a.75.75 0 0 1 0 1.5h-2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 2 13.25Zm6.56 4.5h5.69a.75.75 0 0 1 0 1.5H8.56l1.97 1.97a.749.749 0 1 1-1.06 1.06L5.72 8.53a.751.751 0 0 1 0-1.06l3.75-3.75a.749.749 0 1 1 1.06 1.06L8.56 6.75Z',
+  // Brand marks for the top-bar links. GitHub's is a 16x16 Octicon; LinkedIn's is a 24x24 glyph
+  // (each <svg> carries its own viewBox — see `topbarLinks`).
+  github:
+    'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.075-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z',
+  linkedin:
+    'M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z',
 };
 
 @Component({
@@ -58,7 +63,24 @@ export class AppComponent {
 
   readonly title = 'AI-Sandbox';
   readonly isAuthenticated = this.auth.isAuthenticated;
-  private readonly grafanaUrl = environment.grafanaUrl;
+
+  /** External links promoted into the always-visible top bar (reachable from every page). */
+  readonly topbarLinks = [
+    {
+      key: 'github',
+      label: 'GitHub',
+      href: 'https://github.com/sahilparekh1212/AI-Sandbox',
+      viewBox: '0 0 16 16',
+      icon: ICON.github,
+    },
+    {
+      key: 'linkedin',
+      label: 'LinkedIn',
+      href: 'https://www.linkedin.com/in/sahilparekh1212/',
+      viewBox: '0 0 24 24',
+      icon: ICON.linkedin,
+    },
+  ];
 
   // Current URL as a signal, so the top-bar title and the active sidebar recompute on navigation.
   private readonly url = toSignal(
@@ -96,8 +118,12 @@ export class AppComponent {
   readonly profileIcon = ICON.profile;
   readonly signinIcon = ICON.signin;
 
-  // Per-section sidebar content. About's on-page anchors use literals (the About prose is
-  // English by design — Google Translate covers it); cross-section links reuse the nav.* keys.
+  // Per-section sidebar content. Only sections with genuine per-page context carry a sidebar —
+  // the old per-section "Related" cross-links merely duplicated the activity rail and were
+  // dropped. About/Observability keep their "On this page" anchors (the About prose is English
+  // by design — Google Translate covers it); chat/flashcards/profile have no on-page context, so
+  // they render with no contextual sidebar at all. The Connect links (GitHub/LinkedIn) moved to
+  // the always-visible top bar. The `grafanaUrl` external link now lives on the About page.
   private readonly sidebars: Record<string, { titleKey: string; groups: SidebarGroup[] }> = {
     about: {
       titleKey: 'nav.about',
@@ -110,40 +136,6 @@ export class AppComponent {
             { text: 'Tech stack', fragment: 'tech-stack' },
             { text: 'Design decisions', fragment: 'design-decisions' },
             { text: 'Features', fragment: 'features' },
-          ],
-        },
-        {
-          id: 'about-connect',
-          titleKey: 'nav.connect',
-          items: [
-            { text: 'GitHub ↗', href: 'https://github.com/sahilparekh1212/AI-Sandbox' },
-            { text: 'LinkedIn ↗', href: 'https://www.linkedin.com/in/sahilparekh1212/' },
-          ],
-        },
-      ],
-    },
-    chat: {
-      titleKey: 'nav.chat',
-      groups: [
-        {
-          id: 'chat-related',
-          titleKey: 'nav.related',
-          items: [
-            { labelKey: 'nav.observability', route: '/observability' },
-            { labelKey: 'nav.about', route: '/about' },
-          ],
-        },
-      ],
-    },
-    flashcards: {
-      titleKey: 'nav.flashcards',
-      groups: [
-        {
-          id: 'flashcards-related',
-          titleKey: 'nav.related',
-          items: [
-            { labelKey: 'nav.chat', route: '/chat' },
-            { labelKey: 'nav.about', route: '/about' },
           ],
         },
       ],
@@ -161,33 +153,24 @@ export class AppComponent {
             { text: 'Log', fragment: 'log' },
           ],
         },
-        {
-          id: 'obs-related',
-          titleKey: 'nav.related',
-          items: [
-            { text: 'Grafana ↗', href: this.grafanaUrl },
-            { labelKey: 'nav.about', route: '/about' },
-          ],
-        },
-      ],
-    },
-    profile: {
-      titleKey: 'nav.profile',
-      groups: [
-        {
-          id: 'profile-related',
-          titleKey: 'nav.related',
-          items: [
-            { labelKey: 'nav.observability', route: '/observability' },
-            { labelKey: 'nav.about', route: '/about' },
-          ],
-        },
       ],
     },
   };
 
-  /** The sidebar for the active section (empty on /login, which has no chrome). */
+  /** The sidebar for the active section (null for sections with no per-page context). */
   readonly activeSidebar = computed(() => this.sidebars[this.section()] ?? null);
+
+  /** The page title shown in the top bar — driven by the section, not the (optional) sidebar. */
+  readonly sectionTitleKey = computed(() => {
+    const keys: Record<string, string> = {
+      about: 'nav.about',
+      chat: 'nav.chat',
+      flashcards: 'nav.flashcards',
+      observability: 'nav.observability',
+      profile: 'nav.profile',
+    };
+    return keys[this.section()] ?? null;
+  });
 
   // Which groups the user has collapsed (VS-Code dropdowns default to open).
   private readonly collapsed = signal<Set<string>>(new Set());
@@ -208,4 +191,52 @@ export class AppComponent {
 
   /** The route to attach fragment links to (fragments scroll within the current page). */
   readonly currentPath = computed(() => this.url().split('?')[0].split('#')[0]);
+
+  // ── Scroll-spy: highlight the "On this page" anchor for whichever section is currently in
+  // view. Driven by scroll position (getBoundingClientRect) rather than IntersectionObserver so
+  // the highlight is deterministic and the sections are looked up live on each pass — no need to
+  // rebind observers across navigations, and it survives a page whose sections render a tick late.
+  readonly activeFragment = signal<string | null>(null);
+
+  // The active section is the last one whose heading has scrolled up past this line (just below
+  // the sticky top bar), so the highlight tracks the section you've actually scrolled into.
+  private static readonly SPY_LINE = 96;
+
+  constructor() {
+    // Recompute after each navigation (once the freshly-routed page has had a tick to render)
+    // and on every scroll/resize. Reading four getBoundingClientRects per scroll is cheap enough
+    // to do inline — no rAF/observer indirection, which keeps it working in background tabs too.
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => setTimeout(() => this.updateActiveFragment(), 60));
+    merge(fromEvent(window, 'scroll', { passive: true }), fromEvent(window, 'resize'))
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.updateActiveFragment());
+    // First pass once the initial routed view has rendered.
+    afterNextRender(() => this.updateActiveFragment());
+  }
+
+  private updateActiveFragment(): void {
+    const fragments = (this.activeSidebar()?.groups ?? [])
+      .flatMap((g) => g.items)
+      .map((it) => it.fragment)
+      .filter((f): f is string => !!f);
+    if (fragments.length === 0) {
+      this.activeFragment.set(null);
+      return;
+    }
+    let current: string | null = null;
+    let firstPresent: string | null = null;
+    for (const fragment of fragments) {
+      const el = document.getElementById(fragment);
+      if (!el) continue;
+      firstPresent ??= fragment;
+      if (el.getBoundingClientRect().top <= AppComponent.SPY_LINE) current = fragment;
+    }
+    // Above the first heading, highlight the first section so the sidebar always shows where you are.
+    this.activeFragment.set(current ?? firstPresent);
+  }
 }

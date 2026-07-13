@@ -333,21 +333,27 @@ should populate it instead.
 #### VS Code-style nav shell — polish (the shell shipped in PR #92; these are follow-ups)
 The three-panel shell (activity rail + contextual sidebar with collapsible groups + top bar,
 profile pinned bottom-left) is live. Requested refinements:
-- [ ] **Drop the "Related" group from the sidebar.** The second panel's per-section "Related"
-      cross-links (to other sections) mostly duplicate the activity rail — remove them so the
-      sidebar carries only genuine per-page context (About/Observability keep "On this page";
-      About keeps "Connect").
-- [ ] **Move the GitHub + LinkedIn links into the top bar, left of the language switcher.**
-      Promote them out of About's "Connect" sidebar group into the always-visible top bar (as
-      small icon links) so they're reachable from every page, sitting just left of the language
-      switcher.
-- [ ] **Active-highlight the current "On this page" item.** Clicking an anchor scrolls the
-      section under the sticky top bar, so it isn't obvious you landed on it — the section
-      heading is hidden. Give the clicked/active sidebar item a persistent background highlight
-      (ideally scroll-spy: highlight whichever section is currently in view). `scroll-margin-top`
-      already keeps the target clear of the top bar; this is about the *sidebar* feedback.
-- [ ] **Enlarge the activity rail (1st vertical menu).** Widen it and bump the icon/label size —
-      it currently reads a bit small/cramped.
+- [x] **Drop the "Related" group from the sidebar — done.** All per-section `nav.related`
+      cross-links removed. Chat/Flashcards/Profile had *only* a Related group, so they now render
+      with no contextual sidebar at all (nothing genuine to put there); About and Observability
+      keep their "On this page" anchors. The top-bar page title was decoupled from the sidebar (a
+      new `sectionTitleKey` computed drives it), so a sidebar-less section still titles correctly.
+      The Observability sidebar's `Grafana ↗` external link went with the Related group — Grafana
+      stays reachable from its `/grafana` URL and the About page's observability framing.
+- [x] **Move the GitHub + LinkedIn links into the top bar — done.** About's "Connect" group is
+      gone; GitHub + LinkedIn are now small icon links (`topbarLinks`, GitHub Octicon + LinkedIn
+      glyph) in the top bar just left of the language switcher, so they're reachable from every
+      page. `open in new tab` + `rel=noopener`; unit test asserts order/hrefs.
+- [x] **Active-highlight the current "On this page" item — done, scroll-spy.** A scroll/resize
+      listener + `afterNextRender` first pass drive an `activeFragment` signal: the active anchor
+      is the last section heading scrolled up past a 96px line (just under the sticky top bar), so
+      the sidebar tracks whichever section you're actually in. Sections are looked up live per pass
+      (`getBoundingClientRect`) rather than via IntersectionObserver — deterministic, survives a
+      page that renders a tick late, and keeps working in background tabs. Verified live on About:
+      Overview → Tech stack → Design decisions → Features and back as you scroll.
+- [x] **Enlarge the activity rail — done.** Rail width 68→84px, icons 22→26px, labels 0.62→0.72rem,
+      the active accent bar 2→3px, with a touch more padding/gap. The sidebar offset and content
+      margin key off the same `$rail-width` var, so they tracked automatically.
 - [ ] **Refactor each "On this page" section into its own subcomponent.** Split the long pages
       (About, Observability) into a dedicated component per section (Overview, Tech stack, …;
       Filters, Summary, Trends, Log) so each sidebar anchor maps to a real component that's

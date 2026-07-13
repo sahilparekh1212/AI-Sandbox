@@ -83,9 +83,12 @@
                       it.labelKey ? (it.labelKey | t) : it.text
                     }}</a>
                   } @else if (it.fragment) {
-                    <a [routerLink]="currentPath()" [fragment]="it.fragment">{{
-                      it.labelKey ? (it.labelKey | t) : it.text
-                    }}</a>
+                    <a
+                      [routerLink]="currentPath()"
+                      [fragment]="it.fragment"
+                      [class.active]="it.fragment === activeFragment()"
+                      >{{ it.labelKey ? (it.labelKey | t) : it.text }}</a
+                    >
                   } @else {
                     <a [routerLink]="it.route" routerLinkActive="active">{{
                       it.labelKey ? (it.labelKey | t) : it.text
@@ -104,13 +107,27 @@
   <div class="content" [class.no-sidebar]="!activeSidebar()">
     <header class="topbar">
       <span class="topbar-title">
-        @if (activeSidebar(); as sb) {
-          {{ sb.titleKey | t }}
+        @if (sectionTitleKey(); as titleKey) {
+          {{ titleKey | t }}
         } @else {
           {{ title }}
         }
       </span>
       <div class="topbar-right">
+        @for (link of topbarLinks; track link.key) {
+          <a
+            class="topbar-link"
+            [href]="link.href"
+            target="_blank"
+            rel="noopener"
+            [attr.aria-label]="link.label"
+            [title]="link.label"
+          >
+            <svg [attr.viewBox]="link.viewBox" aria-hidden="true" focusable="false">
+              <path [attr.d]="link.icon" />
+            </svg>
+          </a>
+        }
         <app-language-switcher />
         <!-- Google Website Translator renders here when the visitor picks "Google Translate" -->
         <div id="google_translate_element" hidden></div>
