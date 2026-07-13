@@ -27,12 +27,12 @@ describe('AppComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it(`should have the 'AI-Sandbox' title`, () => {
+  it(`should have the 'ask-app' title`, () => {
     const fixture = TestBed.createComponent(AppComponent);
-    expect(fixture.componentInstance.title).toEqual('AI-Sandbox');
+    expect(fixture.componentInstance.title).toEqual('ask-app');
   });
 
-  it('orders the activity rail About, Chat, Flashcards, Observability with matching URLs', () => {
+  it('orders the activity rail About, Chat, Observability with matching URLs', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const rail = [
@@ -40,18 +40,8 @@ describe('AppComponent', () => {
         '.rail-items .rail-item',
       ),
     ];
-    expect(rail.map((a) => a.textContent?.trim())).toEqual([
-      'About',
-      'Chat',
-      'Flashcards',
-      'Observability',
-    ]);
-    expect(rail.map((a) => a.getAttribute('href'))).toEqual([
-      '/about',
-      '/chat',
-      '/flashcards',
-      '/observability',
-    ]);
+    expect(rail.map((a) => a.textContent?.trim())).toEqual(['About', 'Chat', 'Observability']);
+    expect(rail.map((a) => a.getAttribute('href'))).toEqual(['/about', '/chat', '/observability']);
   });
 
   it('pins a Sign-in entry (and no Profile) at the rail bottom when signed out', () => {
@@ -111,7 +101,7 @@ describe('AppComponent', () => {
     ];
     expect(links.map((a) => a.getAttribute('aria-label'))).toEqual(['GitHub', 'LinkedIn']);
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
-      'https://github.com/sahilparekh1212/AI-Sandbox',
+      'https://github.com/sahilparekh1212/ask-app',
       'https://www.linkedin.com/in/sahilparekh1212/',
     ]);
     // Each renders an icon and opens in a new tab safely.

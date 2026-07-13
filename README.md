@@ -1,7 +1,7 @@
-# AI-Sandbox
+# ask-app
 
 A production-shaped fullstack portfolio project, **live at
-[ai-sandbox.sahilparekh1212.com](https://ai-sandbox.sahilparekh1212.com)**: Spring Boot
+[ask-app.sahilparekh1212.com](https://ask-app.sahilparekh1212.com)**: Spring Boot
 microservices with Google OAuth2/JWT auth (including RBAC), an event-driven audit pipeline over
 Kafka, an Angular SPA, a Claude-powered assistant grounded by RAG over this repo's own docs and
 source (pgvector + Voyage embeddings), a public MCP server, a full observability stack, and CI/CD
@@ -10,20 +10,20 @@ sandbox for practicing the patterns a real system needs, not a toy CRUD demo.
 
 ## Try it live
 
-- **App:** https://ai-sandbox.sahilparekh1212.com — sign in with the demo account
+- **App:** https://ask-app.sahilparekh1212.com — sign in with the demo account
   (`demo` / `demo`, pick `ROLE_ADMIN` to try the admin-gated features). Google sign-in works too,
   but its OAuth consent screen is in testing mode, so it's limited to registered test users — the
   demo login is the intended door.
 - **Ask the app about itself:** the Chat tab answers questions about the architecture, the ADRs,
   and even the deployed source code (the RAG corpus bundles the backend + UI source at build
   time, so the assistant quotes the exact code that's running).
-- **Live system dashboards:** https://ai-sandbox.sahilparekh1212.com/grafana — the deployment's
+- **Live system dashboards:** https://ask-app.sahilparekh1212.com/grafana — the deployment's
   own Grafana, published read-only (metrics, logs and traces of the very services answering your
   requests; the audit dashboard in-app is the domain view of the same system).
 - **Public MCP server** — point any MCP client at the deployment and search its knowledge base:
 
   ```bash
-  claude mcp add --transport http ai-sandbox https://ai-sandbox.sahilparekh1212.com/audit-api/mcp
+  claude mcp add --transport http ask-app https://ask-app.sahilparekh1212.com/audit-api/mcp
   # then, inside Claude Code: "why is there no API gateway?" → grounded in ADR-0005
   ```
 
@@ -73,7 +73,7 @@ Auth issues RSA-signed JWTs and publishes a JWKS endpoint; Audit (and any future
 verifies tokens against that endpoint without ever holding a signing secret. The two services
 never call each other directly for the audit trail — Auth publishes to Kafka and moves on
 whether or not the broker is up, and Audit consumes idempotently. The Audit service also hosts
-the AI surface: the Claude chat/flashcards proxy, the RAG index, and the MCP server. In the live
+the AI surface: the Claude chat proxy, the RAG index, and the MCP server. In the live
 deployment the browser reaches all of it through Caddy (TLS) → the UI's nginx, which
 same-origin-proxies `/auth-api` and `/audit-api` to the services — the diagram shows the logical
 flow. Full writeups of these tradeoffs (and the ones this diagram doesn't show) are in
@@ -83,19 +83,56 @@ flow. Full writeups of these tradeoffs (and the ones this diagram doesn't show) 
 
 ## Tech stack
 
-| Layer            | Choice                                                              |
-|-------------------|----------------------------------------------------------------------|
-| Language / runtime | Java 17, Spring Boot 3.5                                             |
-| Build             | Gradle, multi-module (`common` / `Audit` / `Auth`)                   |
-| Auth              | Google OAuth2, JWT (RSA-signed), JWKS, role-based access control     |
-| Messaging         | Apache Kafka (Redpanda locally) — event-driven audit trail           |
-| Database          | PostgreSQL + pgvector (DEV/SIT/UAT/PROD), H2 (LOCAL/tests), Liquibase migrations |
-| AI                | Claude chat assistant + flashcards (official Anthropic Java SDK, server-side key, guardrailed), RAG over the repo's own docs *and source* (Voyage AI embeddings, pgvector), hand-rolled MCP server (`/mcp`) |
-| Observability     | Prometheus (metrics), Loki (logs), Tempo (traces), Grafana (dashboards) |
-| CI                | GitHub Actions — build/test/coverage, k6 load test, Playwright E2E against the full compose stack, API contract gate (openapi-diff), PIT mutation testing, CodeQL, Trivy (deps + images), Dependabot, secret scanning, conventional commits |
-| CD / supply chain | Versioned images to GHCR on every merge (SemVer + git SHA + latest), cosign keyless signing, syft SBOM attestations |
-| Deployment        | Live: GCE VM, deployed by GitHub Actions via Workload Identity Federation (keyless), Caddy TLS. Also: Docker multi-stage builds, OpenShift manifests (HPA, PVCs, routes) |
-| Frontend          | Angular 21 SPA (`UI/`) — standalone components + signals, nginx same-origin proxies, hand-rolled i18n runtime (currently English-only), GA4 analytics + Sentry monitoring |
+Live links point at the running deployment; rows with no public surface (internal messaging/DB)
+are marked —.
+
+| Layer | Choice | Official site(s) | Live (this deployment) |
+|---|---|---|---|
+| Language / runtime | Java 17, Spring Boot 3.5 | [OpenJDK](https://openjdk.org) · [Spring Boot](https://spring.io/projects/spring-boot) | [Audit health](https://ask-app.sahilparekh1212.com/audit-api/actuator/health) · [Auth health](https://ask-app.sahilparekh1212.com/auth-api/actuator/health) |
+| Build | Gradle, multi-module (`common` / `Audit` / `Auth`) | [Gradle](https://gradle.org) | — |
+| Auth | Google OAuth2, JWT (RSA-signed), JWKS, role-based access control | [Google OAuth2](https://developers.google.com/identity/protocols/oauth2) · [JWT](https://jwt.io) | [Demo login](https://ask-app.sahilparekh1212.com/login) |
+| API docs | Swagger UI / OpenAPI 3, generated from the running code by springdoc-openapi | [Swagger](https://swagger.io) · [OpenAPI](https://www.openapis.org) · [springdoc](https://springdoc.org) | [Audit Swagger](https://ask-app.sahilparekh1212.com/audit-api/swagger-ui.html) · [Auth Swagger](https://ask-app.sahilparekh1212.com/auth-api/swagger-ui/index.html) |
+| Messaging | Apache Kafka (Redpanda locally) — event-driven audit trail | [Apache Kafka](https://kafka.apache.org) · [Redpanda](https://redpanda.com) | — (internal) |
+| Database | PostgreSQL + pgvector (DEV/SIT/UAT/PROD), H2 (LOCAL/tests), Liquibase migrations | [PostgreSQL](https://www.postgresql.org) · [pgvector](https://github.com/pgvector/pgvector) · [H2](https://www.h2database.com) · [Liquibase](https://www.liquibase.com) | — (internal) |
+| AI | Claude chat assistant (official Anthropic Java SDK, server-side key, guardrailed; live audit data grounds answers only when the question is about app state), RAG over the repo's own docs *and source* (Voyage AI embeddings, pgvector), hand-rolled MCP server (`/mcp`) | [Anthropic Claude](https://www.anthropic.com/claude) · [Voyage AI](https://www.voyageai.com) · [MCP](https://modelcontextprotocol.io) | [Chat](https://ask-app.sahilparekh1212.com/chat) · [MCP endpoint](https://ask-app.sahilparekh1212.com/audit-api/mcp) (POST) |
+| Observability | Prometheus (metrics), Loki (logs), Tempo (traces), Grafana (dashboards) | [Prometheus](https://prometheus.io) · [Loki](https://grafana.com/oss/loki/) · [Tempo](https://grafana.com/oss/tempo/) · [Grafana](https://grafana.com) | [Live Grafana](https://ask-app.sahilparekh1212.com/grafana) (read-only) |
+| CI | GitHub Actions — build/test/coverage, k6 load test, Playwright E2E against the full compose stack, API contract gate (openapi-diff), PIT mutation testing, CodeQL, Trivy (deps + images), Dependabot, secret scanning, conventional commits | [GitHub Actions](https://github.com/features/actions) · [k6](https://k6.io) · [Playwright](https://playwright.dev) · [PIT](https://pitest.org) · [CodeQL](https://codeql.github.com) · [Trivy](https://trivy.dev) | [Actions runs](https://github.com/sahilparekh1212/ask-app/actions) |
+| CD / supply chain | Versioned images to GHCR on every merge (SemVer + git SHA + latest), cosign keyless signing, syft SBOM attestations | [GHCR](https://github.com/features/packages) · [Sigstore/cosign](https://www.sigstore.dev) · [Syft](https://github.com/anchore/syft) | [GHCR packages](https://github.com/sahilparekh1212?tab=packages) |
+| Deployment | Live: GCE VM, deployed by GitHub Actions via Workload Identity Federation (keyless), Caddy TLS. Also: Docker multi-stage builds, OpenShift manifests (HPA, PVCs, routes) | [Google Cloud](https://cloud.google.com/compute) · [Caddy](https://caddyserver.com) · [Docker](https://www.docker.com) · [OpenShift](https://www.openshift.com) | [Live app](https://ask-app.sahilparekh1212.com) |
+| Frontend | Angular 21 SPA (`UI/`) — standalone components + signals, nginx same-origin proxies, hand-rolled i18n runtime (currently English-only), Google Analytics 4 (GA4) + Sentry monitoring | [Angular](https://angular.dev) · [nginx](https://nginx.org) · [Google Analytics](https://marketingplatform.google.com/about/analytics/) · [Sentry](https://sentry.io) | [Live app](https://ask-app.sahilparekh1212.com) |
+
+---
+
+## State — what's stateless, what's stateful (and why)
+
+The guiding rule: **the things that serve requests are stateless so they scale horizontally; the
+state is deliberately pushed out to a few stateful backing services.** That's what lets Auth and
+Audit run as many interchangeable replicas — any pod can serve any request because it holds
+nothing between requests.
+
+| Component | | Why |
+|---|---|---|
+| **UI — Angular SPA** | 🟢 Stateless | Served as static files by nginx; the browser holds only a bearer JWT (+ refresh) in `localStorage` and ephemeral in-memory signals. No server session; each API call re-presents the token. |
+| **UI — nginx** | 🟢 Stateless | Serves the static bundle and same-origin-proxies `/auth-api` + `/audit-api`. No per-user state. |
+| **Auth service** | 🟢 Stateless | Signs/verifies JWTs; verifiers use its JWKS. No HTTP session — its one piece of state (the single-use refresh token) is externalized to Redis, so it scales past one replica ([ADR-0007](Backend/docs/adr/0007-redis-refresh-token-store-for-statelessness.md)). |
+| **Audit service** | 🟢 Stateless | Verifies JWTs locally against Auth's JWKS; no session. Its chat/RAG/MCP endpoints are stateless per request (chat history is resent by the client each turn). |
+| **Rate limiter** | 🟡 Per-pod state | Deliberately *not* shared: an in-memory, thread-interrupt "newest-wins" dedup that must stay process-local — a small amount of ephemeral per-pod state, not shared session state ([ADR-0007](Backend/docs/adr/0007-redis-refresh-token-store-for-statelessness.md)). |
+| **PostgreSQL + pgvector** | 🔴 Stateful | The durable system of record: audit rows, plus the `rag_chunk` vector index. On a persistent volume. |
+| **Redis** | 🔴 Stateful | The single-use refresh-token store (atomic `GETDEL` + TTL), shared across Auth replicas. |
+| **Kafka / Redpanda** | 🔴 Stateful | The durable `audit.events` log (+ its DLT) — an event store that persists and can replay. |
+| **Prometheus** | 🔴 Stateful | Scrapes and stores metrics time-series in its own on-disk TSDB. |
+| **Loki** | 🔴 Stateful | Stores aggregated logs. |
+| **Tempo** | 🔴 Stateful | Stores distributed traces. |
+| **Grafana** | 🟡 Config-as-code | Keeps a small internal DB (users/prefs), but datasources + dashboards are **provisioned from files** and access is anonymous read-only, so it's reproducible from config rather than a source of truth. |
+| **Caddy (edge TLS)** | 🟡 Mostly stateless | Stateless request routing/TLS termination; the only durable bit is the ACME/Let's Encrypt cert cache on disk. |
+| **Voyage (embeddings)** | 🟢 Stateless | External request/response — text → vector, no memory between calls. |
+| **Claude / Anthropic (LLM)** | 🟢 Stateless | External request/response — each call carries its own full context; there is no server-side memory, which is exactly why the chat history is resent every turn. |
+
+Two nuances worth calling out: the **`rag_chunk` vector index is the one *reconstructible* stateful
+store** — it self-heals on restart from the corpus bundled in the image (content-hash incremental
+indexing), which is why the backup script excludes it and only audit rows truly need backing up.
+And **"stateless service" doesn't mean "no state anywhere"** — it means the *state lives in the
+backing stores*, so the compute tier stays horizontally scalable.
 
 ---
 
@@ -111,7 +148,7 @@ docker compose up --build
 
 Brings up the Angular UI (http://localhost:4200, demo login `demo`/`demo`), Postgres, Kafka,
 both services, and the full observability stack. The AI features additionally need provider keys
-(`ANTHROPIC_API_KEY` for chat/flashcards, `VOYAGE_API_KEY` for RAG indexing) exported before
+(`ANTHROPIC_API_KEY` for chat, `VOYAGE_API_KEY` for RAG indexing) exported before
 starting — without them those endpoints degrade cleanly and everything else works. Or try the
 API immediately with the zero-setup demo login — no Google OAuth credentials needed:
 
@@ -135,16 +172,8 @@ database, verifying image signatures, and deploying to OpenShift) are in
 
 ---
 
-## Why this repo exists
-
-Built and iterated on as a hands-on way to practice the parts of backend engineering that don't
-show up in a tutorial: what happens when a request is superseded mid-flight (rate limiting with
-transactional rollback), what "idempotent" actually requires at a Kafka consumer, why a JWT
-signing algorithm choice matters once there's more than one verifying service, and what a CI
-pipeline needs to actually gate merges rather than just report problems. The
-[ADRs](Backend/docs/adr/README.md) and [TODO](Backend/TODO.md) are kept current on purpose — they're
-as much a part of the portfolio as the code.
-
 ## License
 
-[MIT](LICENSE)
+**Proprietary — all rights reserved.** This repository is published for viewing/portfolio
+evaluation only; no right to use, run, copy, modify, or distribute the code is granted. See
+[LICENSE](LICENSE).

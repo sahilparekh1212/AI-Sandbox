@@ -36,7 +36,7 @@ interface Feature {
   styleUrl: './home.component.scss',
 })
 export class HomeComponent {
-  readonly repoUrl = 'https://github.com/sahilparekh1212/AI-Sandbox';
+  readonly repoUrl = 'https://github.com/sahilparekh1212/ask-app';
   readonly linkedInUrl = 'https://www.linkedin.com/in/sahilparekh1212/';
   // The deployment's read-only Grafana (anonymous Viewer) — the live "system view" the
   // observability decision talks about. Environment-driven: same-origin /grafana in the
@@ -216,12 +216,6 @@ export class HomeComponent {
       blurb:
         'Ask a Claude model about this application. Answers are grounded via RAG — each question retrieves the most relevant chunks of the repo’s own docs (README, ADRs) from a pgvector index using Voyage embeddings — plus role-scoped audit data, with server-side guardrails. The same index is exposed to any MCP client as a Model Context Protocol server.',
       link: { label: 'Open the chat →', to: '/chat' },
-    },
-    {
-      title: 'Flashcards',
-      blurb:
-        'Generate an LLM study deck about the app — architecture, design decisions, and tradeoffs — through the same guarded Claude proxy and doc-grounded context as the chat.',
-      link: { label: 'Open the flashcards →', to: '/flashcards' },
     },
     {
       title: 'Auth',
