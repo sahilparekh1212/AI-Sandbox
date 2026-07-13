@@ -71,13 +71,15 @@ alternative" treatment as ADR-0005/0008.
       screenshot/GIF ("consider" in the item) — the dashboard is about to change again (KPI
       cards, item 3), so a screenshot now would be stale on arrival; capture one when the
       dashboard settles.
-- [ ] **Load test the deployed stack + record results.** Decide scope deliberately: the k6
-      suite currently runs against a LOADTEST-profile CI stack; prod is one shared 8GB VM
-      with the rate limiter ON and real provider keys (assistant/RAG endpoints cost money
-      per call — exclude them). A short off-peak k6 smoke against
-      https://ai-sandbox.sahilparekh1212.com (search/stats endpoints, modest VUs) answers
-      "how does the $50 VM hold up" honestly; publish p95/throughput in the README next to
-      the CI numbers.
+- [x] **Load test the deployed stack + record results — done.** New read-only
+      `load-test/prod-smoke.js` logs in once and GETs `/search` + `/stats` through the public
+      origin (paid AI endpoints excluded, as this item required). Off-peak run against the live
+      8GB VM: **p95 96.7 ms, avg 69.6 ms, 0.00% errors, 0 × 5xx, 0 × 429** over 597 reqs at 5 VUs
+      — a clean sub-100 ms answer to "how does the $50 VM hold up" over public TLS. Concurrency is
+      kept modest on purpose: the demo login mints one user id and prod's newest-wins limiter
+      buckets per user, so a higher-VU same-user run would measure the limiter's shedding (the
+      existing `rate-limit.js` CI test) rather than read latency. Published in `Backend/README.md`
+      §"Measured numbers" next to the CI figures, with a one-line summary in the root README.
 - [x] **Set up the observability stack for prod — done, verified against the live deployment
       (PR #86).** Exposure: read-only Grafana published at
       `https://ai-sandbox.sahilparekh1212.com/grafana` — a Caddy `handle /grafana*` route on the
