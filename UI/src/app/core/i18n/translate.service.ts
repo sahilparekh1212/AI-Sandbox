@@ -10,20 +10,13 @@ export interface LanguageOption {
 }
 
 /**
- * The languages offered in the switcher. English is the source language (bundled below as the
- * fallback); the other eight are fetched as JSON from {@code public/i18n/<code>.json} on demand.
+ * The languages offered in the switcher. The app currently ships **English only** — the
+ * hand-rolled i18n machinery (dictionary lookups, the {@code t} pipe, the switcher, and the
+ * on-demand Google Translate escape hatch) is kept intact so more languages can be re-added by
+ * simply dropping a {@code public/i18n/<code>.json} file and one entry here. English is bundled
+ * below as the always-present source/fallback; any additional entry is fetched as JSON on demand.
  */
-export const LANGUAGES: readonly LanguageOption[] = [
-  { code: 'en', label: 'English' },
-  { code: 'fr', label: 'Français' },
-  { code: 'es', label: 'Español' },
-  { code: 'hi', label: 'हिन्दी' },
-  { code: 'gu', label: 'ગુજરાતી' },
-  { code: 'pa', label: 'ਪੰਜਾਬੀ' },
-  { code: 'zh', label: '中文' },
-  { code: 'ko', label: '한국어' },
-  { code: 'ja', label: '日本語' },
-];
+export const LANGUAGES: readonly LanguageOption[] = [{ code: 'en', label: 'English' }];
 
 const STORAGE_KEY = 'ais.lang';
 type Dict = Record<string, string>;

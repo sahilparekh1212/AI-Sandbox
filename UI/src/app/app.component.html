@@ -19,6 +19,9 @@
     </div>
 
     <div class="rail-bottom">
+      <!-- Language switcher sits just above the account slot (VS Code puts settings-like
+           controls at the bottom of the activity bar). -->
+      <app-language-switcher class="rail-lang" />
       @if (isAuthenticated()) {
         <a
           class="rail-item"
@@ -83,9 +86,12 @@
                       it.labelKey ? (it.labelKey | t) : it.text
                     }}</a>
                   } @else if (it.fragment) {
-                    <a [routerLink]="currentPath()" [fragment]="it.fragment">{{
-                      it.labelKey ? (it.labelKey | t) : it.text
-                    }}</a>
+                    <a
+                      [routerLink]="currentPath()"
+                      [fragment]="it.fragment"
+                      [class.active]="it.fragment === activeFragment()"
+                      >{{ it.labelKey ? (it.labelKey | t) : it.text }}</a
+                    >
                   } @else {
                     <a [routerLink]="it.route" routerLinkActive="active">{{
                       it.labelKey ? (it.labelKey | t) : it.text
@@ -104,14 +110,27 @@
   <div class="content" [class.no-sidebar]="!activeSidebar()">
     <header class="topbar">
       <span class="topbar-title">
-        @if (activeSidebar(); as sb) {
-          {{ sb.titleKey | t }}
+        @if (sectionTitleKey(); as titleKey) {
+          {{ titleKey | t }}
         } @else {
           {{ title }}
         }
       </span>
       <div class="topbar-right">
-        <app-language-switcher />
+        @for (link of topbarLinks; track link.key) {
+          <a
+            class="topbar-link"
+            [href]="link.href"
+            target="_blank"
+            rel="noopener noreferrer"
+            [attr.aria-label]="link.label"
+            [title]="link.label"
+          >
+            <svg [attr.viewBox]="link.viewBox" aria-hidden="true" focusable="false">
+              <path [attr.d]="link.icon" />
+            </svg>
+          </a>
+        }
         <!-- Google Website Translator renders here when the visitor picks "Google Translate" -->
         <div id="google_translate_element" hidden></div>
       </div>

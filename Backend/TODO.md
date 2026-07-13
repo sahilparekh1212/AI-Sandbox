@@ -333,21 +333,27 @@ should populate it instead.
 #### VS Code-style nav shell — polish (the shell shipped in PR #92; these are follow-ups)
 The three-panel shell (activity rail + contextual sidebar with collapsible groups + top bar,
 profile pinned bottom-left) is live. Requested refinements:
-- [ ] **Drop the "Related" group from the sidebar.** The second panel's per-section "Related"
-      cross-links (to other sections) mostly duplicate the activity rail — remove them so the
-      sidebar carries only genuine per-page context (About/Observability keep "On this page";
-      About keeps "Connect").
-- [ ] **Move the GitHub + LinkedIn links into the top bar, left of the language switcher.**
-      Promote them out of About's "Connect" sidebar group into the always-visible top bar (as
-      small icon links) so they're reachable from every page, sitting just left of the language
-      switcher.
-- [ ] **Active-highlight the current "On this page" item.** Clicking an anchor scrolls the
-      section under the sticky top bar, so it isn't obvious you landed on it — the section
-      heading is hidden. Give the clicked/active sidebar item a persistent background highlight
-      (ideally scroll-spy: highlight whichever section is currently in view). `scroll-margin-top`
-      already keeps the target clear of the top bar; this is about the *sidebar* feedback.
-- [ ] **Enlarge the activity rail (1st vertical menu).** Widen it and bump the icon/label size —
-      it currently reads a bit small/cramped.
+- [x] **Drop the "Related" group from the sidebar — done.** All per-section `nav.related`
+      cross-links removed. Chat/Flashcards/Profile had *only* a Related group, so they now render
+      with no contextual sidebar at all (nothing genuine to put there); About and Observability
+      keep their "On this page" anchors. The top-bar page title was decoupled from the sidebar (a
+      new `sectionTitleKey` computed drives it), so a sidebar-less section still titles correctly.
+      The Observability sidebar's `Grafana ↗` external link went with the Related group — Grafana
+      stays reachable from its `/grafana` URL and the About page's observability framing.
+- [x] **Move the GitHub + LinkedIn links into the top bar — done.** About's "Connect" group is
+      gone; GitHub + LinkedIn are now small icon links (`topbarLinks`, GitHub Octicon + LinkedIn
+      glyph) in the top bar just left of the language switcher, so they're reachable from every
+      page. `open in new tab` + `rel=noopener`; unit test asserts order/hrefs.
+- [x] **Active-highlight the current "On this page" item — done, scroll-spy.** A scroll/resize
+      listener + `afterNextRender` first pass drive an `activeFragment` signal: the active anchor
+      is the last section heading scrolled up past a 96px line (just under the sticky top bar), so
+      the sidebar tracks whichever section you're actually in. Sections are looked up live per pass
+      (`getBoundingClientRect`) rather than via IntersectionObserver — deterministic, survives a
+      page that renders a tick late, and keeps working in background tabs. Verified live on About:
+      Overview → Tech stack → Design decisions → Features and back as you scroll.
+- [x] **Enlarge the activity rail — done.** Rail width 68→84px, icons 22→26px, labels 0.62→0.72rem,
+      the active accent bar 2→3px, with a touch more padding/gap. The sidebar offset and content
+      margin key off the same `$rail-width` var, so they tracked automatically.
 - [ ] **Refactor each "On this page" section into its own subcomponent.** Split the long pages
       (About, Observability) into a dedicated component per section (Overview, Tech stack, …;
       Filters, Summary, Trends, Log) so each sidebar anchor maps to a real component that's
@@ -373,15 +379,19 @@ profile pinned bottom-left) is live. Requested refinements:
       previously read ambiguously as a caption on the first chart), and confirmed the "Add demo
       logs" input+button stay hidden in PROD (the `/api/v1/meta/features` probe derives `demoData`
       from the LOCAL/DEV-only `DemoDataController` bean's presence).
-- [ ] **Assistant + flashcards answer in the user's selected language; add more locales.** The UI
-      chrome is translated (i18n above), but the LLM features still reply in English. Thread the
-      current UI language (`TranslateService.lang`) into the chat + flashcard requests and have the
-      system prompt instruct the model to answer in that language — grounding/allowlist/screener
-      posture unchanged, only the output language. Also extend the switcher with new
-      `public/i18n/<code>.json` dictionaries + `LANGUAGES` entries: **Arabic, Hebrew, Tamil, Telugu,
-      Kannada, Malayalam, Marathi, Bangla (Bengali), Urdu** (Korean and Spanish already ship).
-      Note: Arabic, Hebrew and Urdu are **RTL** — set `dir` on the document alongside `lang` and
-      re-check the layout (sticky header, filter form, chat bubbles, the mobile card table) in RTL.
+      **Update:** the app is now **English-only** by decision — the non-English dictionaries were
+      removed and `LANGUAGES` trimmed to English, but this whole runtime (pipe, switcher, Google
+      Translate hatch) stays in place (see the "dropped by decision" note below).
+- [x] **Multi-language + LLM-answers-in-language — dropped by decision; the app is English-only.**
+      After briefly shipping nine (then twelve) locales, the direction was reversed: the project is
+      **English only**. All non-English `public/i18n/*.json` dictionaries were deleted and `LANGUAGES`
+      trimmed to just English. The **i18n machinery is kept intact** (the `TranslateService`, the `t`
+      pipe, `en.json`, the header language switcher — still visible, now listing only English — and
+      the on-demand Google Translate escape hatch), so re-adding a language later is just dropping a
+      `<code>.json` + one `LANGUAGES` entry. The "reply in the user's language / accept romanized
+      input (e.g. *Samjavo* → explain)" idea was also dropped as not needed. Rationale: maintaining
+      hand-translations of the dense technical About prose across many languages wasn't worth the
+      quality/maintenance cost; Google Translate covers ad-hoc translation on demand.
 - [ ] **Mobile design round 2 — cut the scrolling (hamburger / drawers).** The responsive pass made
       everything usable on phones but *tall*: the nav, the stacked full-width filter form, and the
       card-per-row audit table mean a lot of vertical scrolling. Collapse the nav into a hamburger

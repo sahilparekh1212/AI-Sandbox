@@ -90,4 +90,43 @@ describe('AppComponent', () => {
     fixture.detectChanges();
     expect(el.querySelectorAll('.sb-items').length).toBe(groupsBefore - 1);
   });
+
+  it('drops the per-section "Related" cross-links from every sidebar', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    // About keeps only its "On this page" anchors — no "Related"/"Connect" group headers.
+    const headers = [...el.querySelectorAll('.sb-group-head')].map((h) => h.textContent?.trim());
+    expect(headers).toEqual(['On this page']);
+  });
+
+  it('promotes GitHub + LinkedIn to always-visible top-bar links', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const links = [
+      ...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>(
+        '.topbar-right .topbar-link',
+      ),
+    ];
+    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual(['GitHub', 'LinkedIn']);
+    expect(links.map((a) => a.getAttribute('href'))).toEqual([
+      'https://github.com/sahilparekh1212/AI-Sandbox',
+      'https://www.linkedin.com/in/sahilparekh1212/',
+    ]);
+    // Each renders an icon and opens in a new tab safely.
+    links.forEach((a) => {
+      expect(a.querySelector('svg')).not.toBeNull();
+      expect(a.getAttribute('rel')).toContain('noopener');
+    });
+  });
+
+  it('shows the section title in the top bar even when a section has no sidebar', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    // Default route → About: title comes from the section, not the sidebar.
+    expect(fixture.componentInstance.sectionTitleKey()).toBe('nav.about');
+    const title = (fixture.nativeElement as HTMLElement).querySelector('.topbar-title');
+    expect(title?.textContent?.trim()).toBe('About');
+  });
 });
