@@ -19,6 +19,9 @@
     </div>
 
     <div class="rail-bottom">
+      <!-- Language switcher sits just above the account slot (VS Code puts settings-like
+           controls at the bottom of the activity bar). -->
+      <app-language-switcher class="rail-lang" />
       @if (isAuthenticated()) {
         <a
           class="rail-item"
@@ -119,7 +122,7 @@
             class="topbar-link"
             [href]="link.href"
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             [attr.aria-label]="link.label"
             [title]="link.label"
           >
@@ -128,7 +131,6 @@
             </svg>
           </a>
         }
-        <app-language-switcher />
         <!-- Google Website Translator renders here when the visitor picks "Google Translate" -->
         <div id="google_translate_element" hidden></div>
       </div>

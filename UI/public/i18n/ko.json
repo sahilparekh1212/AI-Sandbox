@@ -9,6 +9,10 @@
   "nav.onThisPage": "이 페이지",
   "nav.related": "관련",
   "nav.connect": "링크",
+  "nav.filters": "필터",
+  "nav.summary": "요약",
+  "nav.trends": "추세",
+  "nav.log": "로그",
 
   "lang.label": "언어",
   "lang.google": "Google 번역…",

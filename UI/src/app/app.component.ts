@@ -146,11 +146,13 @@ export class AppComponent {
         {
           id: 'obs-onpage',
           titleKey: 'nav.onThisPage',
+          // These are UI chrome (the dashboard's own sections), so they're translated via
+          // labelKey — unlike About's anchors, which name English prose headings verbatim.
           items: [
-            { text: 'Filters', fragment: 'filters' },
-            { text: 'Summary', fragment: 'summary' },
-            { text: 'Trends', fragment: 'trends' },
-            { text: 'Log', fragment: 'log' },
+            { labelKey: 'nav.filters', fragment: 'filters' },
+            { labelKey: 'nav.summary', fragment: 'summary' },
+            { labelKey: 'nav.trends', fragment: 'trends' },
+            { labelKey: 'nav.log', fragment: 'log' },
           ],
         },
       ],

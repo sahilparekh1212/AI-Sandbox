@@ -35,6 +35,13 @@ $topbar-height: 56px;
   border-top: 1px solid var(--border-muted);
 }
 
+// The language switcher, hosted in the rail just above the account slot.
+.rail-lang {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0.25rem 0.35rem;
+}
+
 .rail-item {
   display: flex;
   flex-direction: column;

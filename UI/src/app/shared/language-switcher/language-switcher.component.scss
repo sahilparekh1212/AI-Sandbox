@@ -33,8 +33,9 @@
 
 .menu {
   position: absolute;
-  top: calc(100% + 0.35rem);
-  right: 0;
+  // Hosted at the bottom of the left rail, so the menu opens upward from the trigger.
+  bottom: calc(100% + 0.35rem);
+  left: 0;
   z-index: 200;
   min-width: 10rem;
   margin: 0;
@@ -44,6 +45,14 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+
+  // On phones the rail is a strip at the very top, so the menu must open downward instead.
+  @media (max-width: 640px) {
+    bottom: auto;
+    top: calc(100% + 0.35rem);
+    left: auto;
+    right: 0;
+  }
 
   li {
     margin: 0;
