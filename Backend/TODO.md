@@ -64,21 +64,13 @@ live — I can't do them for you:
 
 ### Architecture diagram: redraw so the flows are legible
 
-The About page's inline SVG (`UI/src/app/features/home/architecture-diagram.ts`) and the README
-Mermaid have all the right boxes, but the *flows* don't read from the image (user feedback,
-2026-07-13): you can't tell how Google OAuth2 or Google Analytics 4 get used, or what sends data
-to Grafana. Root causes to fix in the redraw:
-
-- [ ] Every edge needs a legible source → target with a label naming the interaction — e.g.
-      `browser → GA4: page views`, `browser/Auth → Google OAuth2: login + token exchange`,
-      `Auth/Audit → Prometheus/Loki/Tempo: metrics/logs/traces`, `Prometheus/Loki/Tempo → Grafana:
-      dashboards` — instead of one lumped "OAuth · analytics · errors" lane and unlabeled curves.
-- [ ] Fix overlaps: "metrics · logs · traces" collides with the EXTERNAL AI band label;
-      "OBSERVABILITY · SELF-HOSTED" collides with the Prometheus pill.
-- [ ] Untangle dotted connectors that sweep across unrelated bands (AI-calls curve passes through
-      PostgreSQL; telemetry lane cuts through AI/SaaS bands) — route around bands or use a
-      column-per-concern layout so proximity implies connection.
-- [ ] Keep the README Mermaid and the SVG telling the same story after the redraw.
+- [x] **Superseded by the docs consolidation (2026-07-13 late evening).** The owner drafted a
+      code-verified architecture guide with fully labeled per-edge flows (`browser → GA4: page
+      views`, `Google → Auth: OAuth callback`, `Prometheus →|scrapes| services`, three stores →
+      Grafana); it became the new root `README.md` outright. The in-app About page — and with it
+      the hand-drawn SVG whose overlapping labels and tangled connectors caused the complaint —
+      was removed entirely; the top bar now links to the README on GitHub, where the Mermaid
+      renders natively. One diagram, one document, no SVG to keep in sync.
 
 ### Deployment: live on Google Cloud, deployed from GitHub
 Chosen shape: one GCE VM running the existing compose stack via `docker-compose.ghcr.yml`

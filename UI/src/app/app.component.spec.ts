@@ -44,16 +44,6 @@ describe('AppComponent', () => {
     expect(rail.map((a) => a.getAttribute('href'))).toEqual(['/chat', '/observability']);
   });
 
-  it('pins About at the top of the rail bottom (above language + account)', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    fixture.detectChanges();
-    const first = (fixture.nativeElement as HTMLElement).querySelector<HTMLAnchorElement>(
-      '.rail-bottom .rail-item',
-    );
-    expect(first?.getAttribute('href')).toBe('/about');
-    expect(first?.getAttribute('aria-label')).toBe('About');
-  });
-
   it('pins a Sign-in entry (and no Profile) as the bottom account slot when signed out', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
@@ -82,17 +72,17 @@ describe('AppComponent', () => {
     expect(account?.querySelector('svg')).withContext('icon, not a text link').not.toBeNull();
   });
 
-  it('renders About full-width with no contextual sidebar', () => {
+  it('renders the default (Chat) section full-width with no contextual sidebar', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
 
-    // Default route → About renders the README on its own; there is no secondary panel.
+    // Default route → Chat has no per-page context; there is no secondary panel.
     expect(el.querySelector('.sidebar')).toBeNull();
     expect(el.querySelector('.content')?.classList.contains('no-sidebar')).toBeTrue();
   });
 
-  it('promotes GitHub + LinkedIn to always-visible top-bar links', () => {
+  it('promotes README + GitHub + LinkedIn to always-visible top-bar links', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const links = [
@@ -100,8 +90,13 @@ describe('AppComponent', () => {
         '.topbar-right .topbar-link',
       ),
     ];
-    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual(['GitHub', 'LinkedIn']);
+    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual([
+      'README',
+      'GitHub',
+      'LinkedIn',
+    ]);
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
+      'https://github.com/sahilparekh1212/ask-app#readme',
       'https://github.com/sahilparekh1212/ask-app',
       'https://www.linkedin.com/in/sahilparekh1212/',
     ]);
@@ -115,9 +110,9 @@ describe('AppComponent', () => {
   it('shows the section title in the top bar even when a section has no sidebar', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
-    // Default route → About: title comes from the section, not the sidebar.
-    expect(fixture.componentInstance.sectionTitleKey()).toBe('nav.about');
+    // Default route → Chat: title comes from the section, not the sidebar.
+    expect(fixture.componentInstance.sectionTitleKey()).toBe('nav.chat');
     const title = (fixture.nativeElement as HTMLElement).querySelector('.topbar-title');
-    expect(title?.textContent?.trim()).toBe('About');
+    expect(title?.textContent?.trim()).toBe('Chat');
   });
 });
