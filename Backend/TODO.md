@@ -18,10 +18,18 @@ live — I can't do them for you:
 - [x] **Google Cloud OAuth**: add redirect URI
       `https://ask-app.sahilparekh1212.com/auth-api/login/oauth2/code/google` to "Web client 1"
       (keep the old one if you keep the old domain).
-- [ ] **Cut over**: merge to `main` → CD publishes `ghcr.io/sahilparekh1212/ask-app/*` images →
-      deploy.yml ships → Caddy auto-issues a Let's Encrypt cert for the new domain once DNS
-      resolves. Then verify `https://ask-app.sahilparekh1212.com` (home, `/audit-api/actuator/health`,
-      MCP `ping`).
+- [x] **Cut over — done (2026-07-13 evening).** PR #98 merged → CD published
+      `ghcr.io/sahilparekh1212/ask-app/*` → deploy.yml shipped → Caddy issued the Let's Encrypt
+      cert for `ask-app.sahilparekh1212.com` on first boot. Verified live: home, About (README),
+      audit health UP, MCP ping, demo login, grounded chat turn, Grafana health. **The checklist
+      above was incomplete — three more rename dependencies surfaced during the cutover** (all
+      fixed; see the war story below): the WIF provider's `--attribute-condition` and the deploy
+      SA's `workloadIdentityUser` binding both pinned `sahilparekh1212/AI-Sandbox` in GCP IAM, and
+      the GCE VM itself had to be renamed `ai-sandbox-vm` → `ask-app-vm` (deploy.yml's `GCP_VM` had
+      been renamed in git, but a VM is not renamed by a commit — stop → `set-name` → start, static
+      IP retained; old stack `down`'d first so restart policies couldn't re-grab ports 80/443).
+      Consequence of the cutover: the old `ai-sandbox.sahilparekh1212.com` origin no longer serves
+      (Caddy answers only for the new `DEPLOY_DOMAIN`).
 - [ ] **Optional cleanup**: delete the old `ghcr.io/.../ai-sandbox/*` packages once the new ones are
       confirmed; optionally rename the local checkout folder `C:\Dev\AI-Sandbox` (the Gradle build
       dir moves to `%LOCALAPPDATA%\ask-app-build` on the next build automatically).
@@ -30,11 +38,25 @@ live — I can't do them for you:
 
 ### Post-deploy: smoke-test prod, then resume summary (IMMEDIATE)
 
-- [ ] **Smoke-test prod after the PR #98 deploy** (the rename/About-page ship): home page, About
-      renders the README (+ chat-flow + CI/CD sections), `/audit-api/actuator/health` UP, MCP
-      `ping`, demo login, a chat turn answering grounded, Grafana `/grafana/api/health` — all
-      through `https://ask-app.sahilparekh1212.com`. Also confirm the deploy workflow's own smoke
-      step passed and the Let's Encrypt cert issued for the (new) domain on first boot.
+- [x] **WIF/VM rename blockers — fixed (2026-07-13).** Three deploy failures diagnosed from run
+      logs, each one step deeper (a textbook trust-chain walk): (1) WIF federated-token exchange
+      rejected — provider `github-oidc` in pool `github` still had
+      `assertion.repository=='sahilparekh1212/AI-Sandbox'`; updated via
+      `gcloud iam workload-identity-pools providers update-oidc`. (2) Next run: auth step passed
+      but `iam.serviceAccounts.getAccessToken` denied — the deploy SA's `workloadIdentityUser`
+      binding was also pinned by `attribute.repository/...AI-Sandbox`; added the `ask-app` member
+      (first retry still 403'd — IAM propagation delay, same signature as launch night). (3) Next
+      run: `instances/ask-app-vm not found` — the rename commit had changed `GCP_VM`/`APP_DIR` in
+      deploy.yml, but the real VM was still `ai-sandbox-vm`; old stack `down`'d (with a dummy
+      `AUTH_RSA_PRIVATE_KEY` to satisfy the compose `:?` interpolation — the real pem is 600-mode
+      and unreadable to the interactive OS Login user), VM stop → `set-name` → start (static IP
+      retained), deploy re-run → green end to end.
+- [x] **Smoke-test prod after the PR #98 deploy — all pass (2026-07-13).** Through
+      `https://ask-app.sahilparekh1212.com`: home 200; fresh Let's Encrypt cert
+      (SAN = ask-app.sahilparekh1212.com); About serves the README with the chat-flow + CI/CD
+      sections; `/audit-api/actuator/health` UP; MCP `ping` → result; demo login issues JWTs; a
+      chat turn answered grounded (HTTP 200, cites the RAG design); Grafana `/grafana/api/health`
+      database ok. Deploy workflow's own smoke step also green.
 - [ ] **Resume summary (on request):** when the owner asks, distill the implementation-highlights
       log into resume-ready bullets (what was built + problems solved: event-driven audit over
       Kafka, RAG/MCP assistant, keyless CI/CD with signed images, observability proven end-to-end,
@@ -42,21 +64,13 @@ live — I can't do them for you:
 
 ### Architecture diagram: redraw so the flows are legible
 
-The About page's inline SVG (`UI/src/app/features/home/architecture-diagram.ts`) and the README
-Mermaid have all the right boxes, but the *flows* don't read from the image (user feedback,
-2026-07-13): you can't tell how Google OAuth2 or Google Analytics 4 get used, or what sends data
-to Grafana. Root causes to fix in the redraw:
-
-- [ ] Every edge needs a legible source → target with a label naming the interaction — e.g.
-      `browser → GA4: page views`, `browser/Auth → Google OAuth2: login + token exchange`,
-      `Auth/Audit → Prometheus/Loki/Tempo: metrics/logs/traces`, `Prometheus/Loki/Tempo → Grafana:
-      dashboards` — instead of one lumped "OAuth · analytics · errors" lane and unlabeled curves.
-- [ ] Fix overlaps: "metrics · logs · traces" collides with the EXTERNAL AI band label;
-      "OBSERVABILITY · SELF-HOSTED" collides with the Prometheus pill.
-- [ ] Untangle dotted connectors that sweep across unrelated bands (AI-calls curve passes through
-      PostgreSQL; telemetry lane cuts through AI/SaaS bands) — route around bands or use a
-      column-per-concern layout so proximity implies connection.
-- [ ] Keep the README Mermaid and the SVG telling the same story after the redraw.
+- [x] **Superseded by the docs consolidation (2026-07-13 late evening).** The owner drafted a
+      code-verified architecture guide with fully labeled per-edge flows (`browser → GA4: page
+      views`, `Google → Auth: OAuth callback`, `Prometheus →|scrapes| services`, three stores →
+      Grafana); it became the new root `README.md` outright. The in-app About page — and with it
+      the hand-drawn SVG whose overlapping labels and tangled connectors caused the complaint —
+      was removed entirely; the top bar now links to the README on GitHub, where the Mermaid
+      renders natively. One diagram, one document, no SVG to keep in sync.
 
 ### Deployment: live on Google Cloud, deployed from GitHub
 Chosen shape: one GCE VM running the existing compose stack via `docker-compose.ghcr.yml`

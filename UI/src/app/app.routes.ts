@@ -1,5 +1,4 @@
 import { Routes } from '@angular/router';
-import { HomeComponent } from './features/home/home.component';
 import { LoginComponent } from './features/login/login.component';
 import { AuthCallbackComponent } from './features/auth-callback/auth-callback.component';
 import { ProfileComponent } from './features/profile/profile.component';
@@ -7,11 +6,11 @@ import { AuditComponent } from './features/audit/audit.component';
 import { AssistantComponent } from './features/assistant/assistant.component';
 import { authGuard } from './core/auth/auth.guard';
 
-// URLs mirror the nav labels (About, Chat, Observability). The old paths
-// (/, /audit, /assistant) stay as redirects so bookmarks and inbound links keep working,
-// and anything unrecognized lands on About rather than a dead end.
+// URLs mirror the nav labels (Chat, Observability). The old paths (/, /about, /audit,
+// /assistant) stay as redirects so bookmarks and inbound links keep working, and anything
+// unrecognized lands on Chat rather than a dead end (unauthenticated visitors are routed to
+// the login page by the guard). The project README lives on GitHub, linked from the top bar.
 export const routes: Routes = [
-  { path: 'about', component: HomeComponent, title: 'ask-app' },
   { path: 'login', component: LoginComponent, title: 'Sign in' },
   { path: 'login/callback', component: AuthCallbackComponent, title: 'Signing in…' },
   { path: 'profile', component: ProfileComponent, title: 'Profile', canActivate: [authGuard] },
@@ -27,10 +26,11 @@ export const routes: Routes = [
     title: 'Chat',
     canActivate: [authGuard],
   },
-  // Legacy paths from before the URL/label alignment.
+  // Legacy paths from before the URL/label alignment (and the removed About page).
+  { path: 'about', redirectTo: 'chat' },
   { path: 'audit', redirectTo: 'observability' },
   { path: 'assistant', redirectTo: 'chat' },
   { path: 'flashcards', redirectTo: 'chat' },
-  { path: '', redirectTo: 'about', pathMatch: 'full' },
-  { path: '**', redirectTo: 'about' },
+  { path: '', redirectTo: 'chat', pathMatch: 'full' },
+  { path: '**', redirectTo: 'chat' },
 ];
