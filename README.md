@@ -97,6 +97,37 @@ Full writeups of these tradeoffs (and the ones this diagram doesn't show) are in
 
 ---
 
+## How a chat query works
+
+The Chat tab is grounded by RAG, but the three external pieces never talk to each other —
+**Voyage** (embeddings), **pgvector** (the vector index), and **Claude** (the LLM) are independent.
+The **Audit service is the sole orchestrator**: it calls each one in turn and carries the data
+between them. Everything below happens inside the Audit service:
+
+```
+1.  query text                                    ──►  Voyage    ──►  query vector
+2.  query vector                                  ──►  pgvector  ──►  top-5 chunk text (+ scores)
+3.  chunk text + [audit data] + history + query   ──►  Claude    ──►  answer
+```
+
+1. **Embed the question.** The backend sends the query text to Voyage and gets back a vector.
+   Voyage is stateless — it knows nothing about the database or Claude.
+2. **Search.** The backend runs that vector as a similarity query against pgvector, which returns
+   the top-5 chunks' text (source, heading, content) and their scores. Voyage never touches the
+   database.
+3. **Assemble the prompt.** The backend builds the prompt from the retrieved chunk _text_, plus —
+   only when the question is about app state — live audit data (role-scoped), the chat history, and
+   the query.
+4. **Answer.** The backend sends that prompt to Claude, which writes the answer.
+
+**Claude never sees a vector.** Vectors exist only for the search step (Voyage produces them,
+pgvector compares them); once the matching chunks are found, only their human-readable text goes
+into the prompt. The mental model: Voyage is a calculator (text → vector), pgvector is a search
+index (vector → nearest chunks), and Claude is a writer (prompt → answer) — the Audit service is
+the conductor that calls all three in order.
+
+---
+
 ## Tech stack
 
 Live links point at the running deployment; rows with no public surface (internal messaging/DB)
