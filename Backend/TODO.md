@@ -28,7 +28,19 @@ live — I can't do them for you:
 
 ## Open roadmap (prioritized)
 
-### Architecture diagram: redraw so the flows are legible (NEXT UP)
+### Post-deploy: smoke-test prod, then resume summary (IMMEDIATE)
+
+- [ ] **Smoke-test prod after the PR #98 deploy** (the rename/About-page ship): home page, About
+      renders the README (+ chat-flow + CI/CD sections), `/audit-api/actuator/health` UP, MCP
+      `ping`, demo login, a chat turn answering grounded, Grafana `/grafana/api/health` — all
+      through `https://ask-app.sahilparekh1212.com`. Also confirm the deploy workflow's own smoke
+      step passed and the Let's Encrypt cert issued for the (new) domain on first boot.
+- [ ] **Resume summary (on request):** when the owner asks, distill the implementation-highlights
+      log into resume-ready bullets (what was built + problems solved: event-driven audit over
+      Kafka, RAG/MCP assistant, keyless CI/CD with signed images, observability proven end-to-end,
+      measured k6 numbers). Run the smoke test above first so every claim is verified-live.
+
+### Architecture diagram: redraw so the flows are legible
 
 The About page's inline SVG (`UI/src/app/features/home/architecture-diagram.ts`) and the README
 Mermaid have all the right boxes, but the *flows* don't read from the image (user feedback,
