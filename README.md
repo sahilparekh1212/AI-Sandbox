@@ -45,7 +45,7 @@ flowchart LR
     end
 
     subgraph Services[" "]
-        Auth["Auth :8085\nGoogle OAuth2 → JWT, JWKS"]
+        Auth["Auth :8085\nJWT, JWKS"]
         Audit["Audit :8083\nsearch · aggregate · chat · RAG · /mcp"]
     end
 
@@ -60,7 +60,13 @@ flowchart LR
         Voyage["Voyage embeddings"]
     end
 
-    subgraph Observability
+    subgraph SaaS["External SaaS"]
+        OAuth["Google OAuth2\n(login)"]
+        GA4["Google Analytics 4\n(page views)"]
+        Sentry["Sentry\n(error tracking)"]
+    end
+
+    subgraph Observability["Observability (self-hosted)"]
         Prom[Prometheus]
         Loki[Loki]
         Tempo[Tempo]
@@ -71,12 +77,16 @@ flowchart LR
     M -- "/audit-api/mcp" --> Audit
     UI -- "/auth-api · Bearer JWT" --> Auth
     UI -- "/audit-api · Bearer JWT" --> Audit
+    R -. page views .-> GA4
+    R -. OAuth login .-> OAuth
+    Auth -. token exchange .-> OAuth
     Auth -- "single-use refresh (GETDEL)" --> Redis
     Auth -- "LOGIN / REFRESH / LOGOUT\n(fire-and-forget, async)" --> Kafka
     Kafka -- "idempotent consume" --> Audit
     Audit --> PG
     Audit -- chat --> Claude
     Audit -- embeddings --> Voyage
+    UI & Auth & Audit -. errors .-> Sentry
     Auth & Audit -. metrics .-> Prom
     Auth & Audit -. logs .-> Loki
     Auth & Audit -. traces .-> Tempo
@@ -90,8 +100,10 @@ services never call each other directly for the audit trail — Auth publishes t
 whether or not the broker is up, and Audit consumes idempotently. The Audit service also hosts the
 AI surface: the Claude chat proxy, the RAG index (pgvector + Voyage embeddings), and the MCP server.
 Every request path enters through Caddy (TLS) → the UI's nginx, which serves the Angular SPA and
-same-origin-proxies `/auth-api` and `/audit-api` to the services. Metrics, logs, and traces flow to
-Prometheus / Loki / Tempo and surface in a read-only [Grafana](https://ask-app.sahilparekh1212.com/grafana).
+same-origin-proxies `/auth-api` and `/audit-api` to the services. Login is via Google OAuth2 (or the
+zero-setup demo account); the SPA reports page views to Google Analytics 4, and the UI plus both
+services report errors to Sentry. Metrics, logs, and traces flow to Prometheus / Loki / Tempo and
+surface in a read-only [Grafana](https://ask-app.sahilparekh1212.com/grafana).
 Full writeups of these tradeoffs (and the ones this diagram doesn't show) are in
 [`Backend/docs/adr/`](Backend/docs/adr/README.md).
 
@@ -180,6 +192,53 @@ store** — it self-heals on restart from the corpus bundled in the image (conte
 indexing), which is why the backup script excludes it and only audit rows truly need backing up.
 And **"stateless service" doesn't mean "no state anywhere"** — it means the *state lives in the
 backing stores*, so the compute tier stays horizontally scalable.
+
+---
+
+## CI/CD checks
+
+Every pull request runs the gates below (branch protection blocks the merge on the required ones);
+every merge to `main` runs the release + deploy pipeline. All are GitHub Actions.
+
+**Build & test**
+
+- **Build, test & coverage** (Backend) — Spotless Java formatting, compile, JUnit + `@SpringBootTest`
+  + embedded-Kafka integration tests, JaCoCo with a **90% line-coverage gate**, and **diff-cover** on
+  the changed lines.
+- **Lint, build & test** (Frontend) — Prettier format check, ESLint, production build (with bundle
+  budgets), and headless Karma unit tests.
+- **Playwright E2E (compose stack)** — boots the full docker-compose stack and drives the real path
+  browser → nginx → Auth → Kafka → Audit → Postgres (nothing mocked).
+
+**Quality & contract**
+
+- **PIT mutation testing (report-only)** — mutation score per module, surfaced in the job summary.
+- **Breaking-change gate (openapi-diff)** — regenerates both services' OpenAPI specs from the running
+  code (PR head vs base branch) and fails on incompatible API changes; overridable with the
+  `breaking-change-approved` label for intentional breaks.
+
+**Security & supply chain**
+
+- **CodeQL — Analyze (java-kotlin)** — SAST on every PR and on a schedule.
+- **Trivy CVE scan** — dependency + image vulnerability scan → SARIF to the Security tab; fixable
+  HIGH/CRITICAL gate the merge.
+- **pre-commit (hygiene + secrets)** — gitleaks + private-key detection + repo hygiene hooks.
+- **Dependabot** — automated dependency-update PRs and alerts.
+
+**Performance & conventions**
+
+- **Load test (k6)** — throughput (rate limiter off) and rate-limit shedding (limiter on); asserts p95
+  latency and clean 429s with no 5xx.
+- **Conventional commit messages** — commitlint on every commit in the PR.
+
+**On merge to `main`**
+
+- **CD** — matrix-builds the `auth` / `audit` / `ui` images and pushes to GHCR (generated SemVer +
+  `sha-<short>` + `latest`), **cosign** keyless signing of each pushed digest, and a **syft** SBOM
+  attached as a signed attestation.
+- **Deploy** — keyless (Workload Identity Federation) GitHub-Actions → GCE deploy: ships the compose
+  bundle, pulls the signed images, restarts the stack, and smoke-checks `/`, the health endpoints, and
+  an MCP `ping` through the public origin.
 
 ---
 
