@@ -82,7 +82,7 @@ describe('AppComponent', () => {
     expect(el.querySelector('.content')?.classList.contains('no-sidebar')).toBeTrue();
   });
 
-  it('promotes README + GitHub + LinkedIn to always-visible top-bar links', () => {
+  it('promotes GitHub + LinkedIn to always-visible top-bar links', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const links = [
@@ -90,13 +90,8 @@ describe('AppComponent', () => {
         '.topbar-right .topbar-link',
       ),
     ];
-    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual([
-      'README',
-      'GitHub',
-      'LinkedIn',
-    ]);
+    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual(['GitHub', 'LinkedIn']);
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
-      'https://github.com/sahilparekh1212/ask-app#readme',
       'https://github.com/sahilparekh1212/ask-app',
       'https://www.linkedin.com/in/sahilparekh1212/',
     ]);
