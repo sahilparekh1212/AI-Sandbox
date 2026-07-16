@@ -1,12 +1,18 @@
 # ask-app
 
+👋 **Welcome!** Thanks for stopping by. This is a production-shaped full-stack
+portfolio project — a live, deployed system rather than a demo — and this README
+walks you through what it is, how the pieces connect, and the CI/CD that ships
+it. Feel free to poke around the <a href="https://ask-app.sahilparekh1212.com" target="_blank" rel="noopener noreferrer">live app</a> (demo login `demo` / `demo`)
+while you read.
+
 This README combines the project overview with the code-verified runtime
 architecture. It is intentionally focused on how the deployed system is
 connected and why its boundaries exist.
 
 Source: <a href="https://github.com/sahilparekh1212/ask-app" target="_blank" rel="noopener noreferrer">github.com/sahilparekh1212/ask-app</a>
 
-## What this project is
+## 📦 What this project is
 
 ask-app is a production-shaped full-stack portfolio application:
 
@@ -23,7 +29,7 @@ The live app is available at
 <a href="https://ask-app.sahilparekh1212.com" target="_blank" rel="noopener noreferrer">ask-app.sahilparekh1212.com</a>. The demo
 account is `demo` / `demo`.
 
-## System diagram
+## 🗺️ System diagram
 
 ```mermaid
 flowchart LR
@@ -64,9 +70,9 @@ flowchart LR
     Tempo --> Grafana
 ```
 
-## Core runtime flows
+## 🔄 Core runtime flows
 
-### Authentication and authorization
+### 🔐 Authentication and authorization
 
 The SPA calls Auth through nginx's same-origin `/auth-api` proxy. Auth supports
 the demo login and Google OAuth2, issues RSA-signed access JWTs, and exposes a
@@ -78,7 +84,7 @@ Refresh tokens are single-use and stored with a TTL in Redis. The browser keeps
 the access and refresh tokens locally; its HTTP interceptor attaches the bearer
 token and performs one refresh-and-retry after a `401`.
 
-### Event-driven audit trail
+### 📝 Event-driven audit trail
 
 Auth publishes login, refresh, and logout `AuditEvent`s asynchronously to the
 `audit.events` Kafka topic. Audit also publishes its own chat, RAG, and MCP
@@ -88,7 +94,7 @@ audit rows in PostgreSQL. A slow broker does not block the original feature or
 authentication request; missed events during an outage are an accepted
 fire-and-forget trade-off.
 
-### Assistant, RAG, and MCP
+### 🤖 Assistant, RAG, and MCP
 
 The UI sends chat requests only to Audit, keeping provider credentials outside
 the browser. Audit screens prompts for credentials and PII before any external
@@ -101,7 +107,7 @@ new or changed chunks are embedded with Voyage and stored in pgvector. The same
 RAG service powers `/mcp`; it exposes repository knowledge only and does not
 expose audit rows.
 
-## Component map
+## 🧩 Component map
 
 | Area | Responsibility | Main location |
 |---|---|---|
@@ -113,7 +119,7 @@ expose audit rows.
 | Data | Audit records, RAG vectors, refresh tokens, event log | PostgreSQL/pgvector, Redis, Kafka |
 | Observability | Metrics, logs, traces, dashboards | `Backend/monitoring/` |
 
-## State, scaling, and resilience
+## ⚖️ State, scaling, and resilience
 
 | Component | State model |
 |---|---|
@@ -132,7 +138,7 @@ rate counter; a superseded request is interrupted and returns `429` with
 `Retry-After`. Audit mutations use a transactional checkpoint so an interrupted,
 superseded request rolls back rather than leaving partial writes.
 
-## Observability and external reporting
+## 📊 Observability and external reporting
 
 - Prometheus polls the Spring services' metrics endpoints.
 - Services send structured logs to Loki and OpenTelemetry traces to Tempo.
@@ -142,7 +148,43 @@ superseded request rolls back rather than leaving partial writes.
 - UI, Auth, and Audit send errors to Sentry only when their DSNs are configured;
   performance tracing remains with Tempo.
 
-## Run locally
+## 🚦 Continuous integration and delivery
+
+Everything below runs in GitHub Actions — enforced in CI rather than via local
+git hooks — so every change is gated the same way no matter who pushes it.
+
+### ✅ Quality gates (on every pull request)
+
+- 🧹 **Lint** — repo-wide hygiene, 🔑 secret scanning (gitleaks +
+  `detect-private-key`), and commit-message linting, all reusing
+  `.pre-commit-config.yaml` as the single source of truth.
+- ☕ **Backend CI** — Spotless formatting, JUnit tests with a JaCoCo **90%
+  coverage gate**, `diff-cover` on changed lines, a 🏋️ k6 load test, and 🛡️
+  Trivy CVE scans of both the built jars and the container images (results
+  uploaded as SARIF to the Security tab).
+- 🅰️ **Frontend CI** — ESLint, Prettier, Angular unit tests, and a production
+  build.
+- 🔎 **CodeQL** — static application security testing (SAST) across the code.
+- 📜 **API contract** — regenerates each service's OpenAPI spec from the running
+  code and fails on breaking changes via `openapi-diff` (additive changes pass;
+  an approved break is opt-in by label).
+- 🎭 **E2E** — Playwright drives the full compose stack end to end
+  (browser → nginx → Auth → Kafka → Audit → PostgreSQL), nothing mocked.
+- 🧬 **Mutation testing** — PIT runs report-only to surface weak assertions that
+  line coverage alone would miss.
+
+### 🚀 Delivery (on merge to `main`)
+
+- 📦 **CD** — builds each deployable image once and pushes to GitHub Container
+  Registry with three tags (SemVer `0.1.<run>`, `sha-<short>`, and `latest`),
+  generates an 📋 SBOM with syft, and ✍️ signs each image **digest** keylessly
+  with cosign (GitHub OIDC identity + the public Rekor transparency log — no
+  signing key to store or rotate).
+- ☁️ **Deploy** — ships the compose stack to the production GCE VM, authenticating
+  keylessly through Workload Identity Federation (no exported cloud credentials
+  anywhere), then smoke-checks the live origin.
+
+## 🖥️ Run locally
 
 ```bash
 cd Backend
@@ -154,13 +196,13 @@ port `8083`, PostgreSQL, Redis, Redpanda, and the observability stack. Chat and
 RAG are optional: export `ANTHROPIC_API_KEY` and `VOYAGE_API_KEY` to enable
 them; the rest of the system remains usable without either key.
 
-## Further reading
+## 📚 Further reading
 
 - <a href="https://github.com/sahilparekh1212/ask-app/blob/main/Backend/README.md" target="_blank" rel="noopener noreferrer">Backend guide</a>
 - <a href="https://github.com/sahilparekh1212/ask-app/blob/main/Backend/docs/adr/README.md" target="_blank" rel="noopener noreferrer">Architecture decisions</a>
 - <a href="https://github.com/sahilparekh1212/ask-app/blob/main/Backend/docs/deployment.md" target="_blank" rel="noopener noreferrer">Deployment guide</a>
 
-## License
+## 📄 License
 
 **Proprietary — all rights reserved.** This repository is published for
 viewing/portfolio evaluation only; no right to use, run, copy, modify, or

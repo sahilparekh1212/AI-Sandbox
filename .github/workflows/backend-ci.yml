@@ -8,14 +8,17 @@ on:
       # These jobs are required branch-protection checks. A required check that never triggers
       # leaves a PR permanently un-mergeable, so this must also fire on any CI/automation change
       # (.github/**) and on frontend-only PRs (UI/**) — even though the backend is unchanged, the
-      # required contexts still have to report green.
+      # required contexts still have to report green. '*.md' covers root-level docs (README, etc.)
+      # that match none of the directory filters above, for the same reason.
       - '.github/**'
       - 'UI/**'
+      - '*.md'
   pull_request:
     paths:
       - 'Backend/**'
       - '.github/**'
       - 'UI/**'
+      - '*.md'
 
 jobs:
   build-test:

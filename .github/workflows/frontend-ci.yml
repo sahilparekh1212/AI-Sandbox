@@ -6,10 +6,14 @@ on:
     paths:
       - 'UI/**'
       - '.github/workflows/frontend-ci.yml'
+      # Root-level docs (README, etc.) match no other filter; this required check must still
+      # report green on a docs-only PR, so trigger it on root markdown too.
+      - '*.md'
   pull_request:
     paths:
       - 'UI/**'
       - '.github/workflows/frontend-ci.yml'
+      - '*.md'
 
 defaults:
   run:
