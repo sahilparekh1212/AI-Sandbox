@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: ask-app
+  labels:
+    app: postgres
+spec:
+  # Single replica: Postgres is a single-writer database of record, so it can't be horizontally
+  # scaled by bumping replicas the way the stateless services are — it is therefore a SPOF here.
+  # Production HA = a managed Postgres or an operator (CloudNativePG / Crunchy), which is the
+  # recommended route in docs/deployment.md §2; this single pod is the self-contained option that
+  # mirrors the local compose stack (same pgvector image, same auditdb/audit credentials shape).
+  replicas: 1
+  # A ReadWriteOnce volume can't be mounted by an old and a new pod at once, and two postgres
+  # processes must never share one data dir — so replace the pod rather than rolling-update it.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      # The official postgres/pgvector image runs as uid 999 and must own its data dir. Grant that
+      # gid to the mounted volume via fsGroup, and note that OpenShift's default restricted SCC
+      # assigns a random uid — run this under a relaxed SCC so the image keeps its uid, e.g.
+      #   oc adm policy add-scc-to-user anyuid -z default -n ask-app
+      # (the same note already applies to the monitoring images; see the backend README).
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: postgres
+          # pgvector's official image = postgres:16 + the vector extension, which the RAG feature's
+          # Liquibase changeset enables (CREATE EXTENSION vector). Same image as docker-compose.yml.
+          image: pgvector/pgvector:pg16
+          ports:
+            - containerPort: 5432
+          # POSTGRES_USER/PASSWORD/DB initialize the database and role on first boot.
+          envFrom:
+            - secretRef:
+                name: postgres-secret
+          env:
+            # Init into a subdirectory of the mount so a volume-root lost+found never collides with
+            # initdb's "directory not empty" check.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-data

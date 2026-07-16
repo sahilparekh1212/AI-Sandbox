@@ -57,7 +57,11 @@ tied to the Docker setup?", this is the list:
 - `Backend/docs/deployment.md` — the end-to-end deployment guide (environments, profiles,
   build-once/promote-by-digest, secrets, rollout/rollback, first-deploy checklist).
 - `Backend/openshift/**` — Kubernetes/OpenShift manifests (deployment/service/route/hpa/configmap/
-  secret) for Auth, Audit, Redis and the monitoring stack; an alternative to the compose deploy.
+  secret) for Auth, Audit, and the self-hosted backing stores Redis and Postgres, plus the
+  monitoring stack; an alternative to the compose deploy.
+- `Backend/openshift/postgres/**` — self-hosted Postgres (`pgvector/pgvector:pg16`) Deployment +
+  Service + PVC + Secret template; Audit's database of record in-cluster (the audit ConfigMap
+  points its datasource at the `postgres` Service).
 - `Backend/openshift/namespace.yaml` — the namespace all the manifests apply into.
 
 ## CI/CD & GitHub Actions

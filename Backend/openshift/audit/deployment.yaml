@@ -26,6 +26,19 @@ spec:
           envFrom:
             - configMapRef:
                 name: audit-service-config
+          env:
+            # DB credentials from the shared postgres-secret (openshift/postgres/) so the password
+            # is never in the ConfigMap; the datasource URL/driver stay in audit-service-config.
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
           resources:
             requests:
               memory: "256Mi"
