@@ -8,11 +8,16 @@ data:
   SERVER_PORT: "8083"
   # Profile driving this deployment — bump to SIT/UAT/PROD per cluster
   SPRING_PROFILES_ACTIVE: DEV
-  SPRING_DATASOURCE_URL: jdbc:h2:mem:auditdb
-  SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.h2.Driver
-  SPRING_DATASOURCE_USERNAME: sa
-  SPRING_JPA_HIBERNATE_DDL_AUTO: update
-  SPRING_H2_CONSOLE_ENABLED: "false"
+  # Self-hosted Postgres (openshift/postgres/); `postgres` is the in-cluster Service name. The
+  # username/password come from postgres-secret via the Deployment (SPRING_DATASOURCE_USERNAME/
+  # PASSWORD), never from this ConfigMap. Liquibase owns the schema (spring.jpa.hibernate.ddl-auto
+  # is `none` in the base properties — ADR-0004), so there is deliberately no ddl-auto override.
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auditdb
+  SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+  # Use the real pgvector store now that the DB is Postgres — the rag_chunk table's Liquibase
+  # changeset is postgresql-gated and runs here. With no VOYAGE_API_KEY, indexing is still skipped
+  # gracefully and the MCP search tool reports "not configured"; nothing else is affected.
+  RAG_VECTOR_STORE: pgvector
   SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://auth-service:8085/.well-known/jwks.json
   SPRINGDOC_API_DOCS_PATH: /v3/api-docs
   SPRINGDOC_SWAGGER_UI_PATH: /swagger-ui.html

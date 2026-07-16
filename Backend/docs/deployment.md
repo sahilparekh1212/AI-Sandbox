@@ -18,7 +18,7 @@ an environment-specific value the operator supplies.
 | Auth service | `Auth/Dockerfile` (multi-stage → JRE) | 8085 | Stateless; ≥2 replicas; needs Redis + a shared RSA key |
 | Audit service | `Audit/Dockerfile` | 8083 | Stateless; ≥2 replicas; owns the audit schema via Liquibase; hosts the LLM assistant proxy |
 | SPA | `UI/Dockerfile` (node build → `nginx:1.28-alpine`) | 80/4200 | Serves static bundles + reverse-proxies `/auth-api`, `/audit-api` |
-| PostgreSQL | managed or `postgres` image | 5432 | Audit's database of record |
+| PostgreSQL | `openshift/postgres/` (`pgvector/pgvector:pg16`) or a managed instance | 5432 | Audit's database of record (audit rows + pgvector RAG index) |
 | Kafka (Redpanda) | `redpanda` | 9092 | `audit.events` topic + `audit.events.DLT` |
 | Redis | `openshift/redis/` | 6379 | Auth's shared refresh-token store (statelessness) |
 | Observability | Prometheus, Grafana, Loki, Tempo | — | Metrics, logs, traces; all tagged by pod |
@@ -154,24 +154,26 @@ absent); the GCS upload + cron is the one-time VM install above.
 ## 6. Orchestration — OpenShift manifests  [built]
 
 `openshift/<service>/` holds Deployment, Service, Route, ConfigMap, and an HPA per service (plus
-a Secret template for Auth); `openshift/redis/` and `openshift/monitoring/<component>/` cover the
-rest. Apply order (also in [README → Deploying to OpenShift](../README.md)):
+Secret templates for Auth and Postgres); `openshift/redis/`, `openshift/postgres/`, and
+`openshift/monitoring/<component>/` cover the backing stores. Apply order (also in
+[README → Deploying to OpenShift](../README.md)):
 
 ```bash
 oc apply -f openshift/namespace.yaml
-oc apply -f openshift/auth/secret.yaml        # from the gitignored, filled-in template
-oc apply -f openshift/redis/                  # shared refresh-token store — before Auth scales
-oc apply -f openshift/auth/  openshift/audit/ # both default to 2 replicas
+oc apply -f openshift/auth/secret.yaml         # from the gitignored, filled-in template
+oc apply -f openshift/postgres/secret.yaml     # DB credentials — from the gitignored template
+oc apply -f openshift/redis/                    # shared refresh-token store — before Auth scales
+oc apply -f openshift/postgres/                 # Audit's database of record — before Audit starts
+oc apply -f openshift/auth/  openshift/audit/  # both default to 2 replicas
 oc apply -f openshift/monitoring/prometheus/ openshift/monitoring/loki/ openshift/monitoring/grafana/
 ```
 
-Each service scales independently via its HPA; monitoring components get RWO PVCs and
-`strategy: Recreate` (a RWO volume can't be mounted by old+new pods during a rolling update).
-The SPA is served either as an nginx Deployment+Route, or as static assets on a CDN with the
-`/auth-api` and `/audit-api` proxy rules moved to the ingress.
-
-> Note: an `openshift/notification/` directory is left over from a removed module and is not
-> part of the deploy — apply only `auth`, `audit`, `redis`, and `monitoring`.
+Each service scales independently via its HPA. Postgres and the monitoring components are
+stateful: each gets a RWO PVC and `strategy: Recreate` (a RWO volume can't be mounted by old+new
+pods during a rolling update). Postgres is a single-replica SPOF here — the self-contained option
+that mirrors the local compose stack; a managed instance or an operator (CloudNativePG / Crunchy)
+is the HA route (see §2). The SPA is served either as an nginx Deployment+Route, or as static
+assets on a CDN with the `/auth-api` and `/audit-api` proxy rules moved to the ingress.
 
 ---
 

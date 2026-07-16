@@ -482,8 +482,8 @@ Config lives under `monitoring/` (`prometheus/`, `loki/`, `tempo/`, `grafana/pro
 > This section is the concrete OpenShift apply sequence.
 
 Manifests live under `openshift/<service>/` (Deployment, Service, Route, ConfigMap,
-HPA; plus a Secret for Auth). Each service scales independently via its
-HorizontalPodAutoscaler.
+HPA; plus Secret templates for Auth and Postgres) alongside self-hosted `redis`/`postgres`
+backing stores. Each service scales independently via its HorizontalPodAutoscaler.
 
 ```bash
 # 1. Namespace
@@ -492,15 +492,19 @@ oc apply -f openshift/namespace.yaml
 # 2. Secrets — real values are NEVER committed. Copy the gitignored templates and fill them in,
 #    or create the Secrets imperatively (oc create secret ...). See "Secrets" section below.
 cp openshift/auth/secret.example.yaml openshift/auth/secret.yaml                 # then edit real values
+cp openshift/postgres/secret.example.yaml openshift/postgres/secret.yaml         # DB user/password/db
 cp openshift/monitoring/grafana/secret.example.yaml openshift/monitoring/grafana/secret.yaml  # then edit
 oc apply -f openshift/auth/secret.yaml
+oc apply -f openshift/postgres/secret.yaml
 
 # 3. Build & push each image (build context is the repo root)
 docker build -f Audit/Dockerfile -t <registry>/ask-app/audit-service:latest .
 # ...repeat per service, then push
 
-# 4. Shared Redis (Auth's refresh-token store — required before Auth scales past one replica)
+# 4. Backing stores — Redis (Auth's refresh-token store, before Auth scales past one replica)
+#    and Postgres (Audit's database of record, before Audit starts; see the SCC/PVC note below).
 oc apply -f openshift/redis/
+oc apply -f openshift/postgres/
 
 # 5. Apply each service's manifests (both run 2 replicas by default; see HPA below)
 oc apply -f openshift/auth/
@@ -512,13 +516,16 @@ oc apply -f openshift/monitoring/loki/
 oc apply -f openshift/monitoring/grafana/
 ```
 
-> The Grafana/Loki/Prometheus images may need a relaxed SCC on OpenShift, e.g.
-> `oc adm policy add-scc-to-user anyuid -z default -n ask-app`. Each gets a
-> `ReadWriteOnce` `PersistentVolumeClaim` for its data dir (`pvc.yaml` alongside each
-> `deployment.yaml`; sized 5Gi/1Gi/10Gi for Loki/Grafana/Prometheus respectively, no
+> The Postgres and Grafana/Loki/Prometheus images may need a relaxed SCC on OpenShift, e.g.
+> `oc adm policy add-scc-to-user anyuid -z default -n ask-app` — they run as fixed uids and must
+> own their data dirs (Postgres sets `fsGroup: 999` to match). Each gets a `ReadWriteOnce`
+> `PersistentVolumeClaim` for its data dir (`pvc.yaml` alongside each `deployment.yaml`; sized
+> 5Gi for Postgres and 5Gi/1Gi/10Gi for Loki/Grafana/Prometheus respectively, no
 > `storageClassName` set so it binds the cluster default — override per environment).
 > Deployments use `strategy: Recreate` since a RWO volume can't be mounted by an old
-> and new pod at once during a rolling update.
+> and new pod at once during a rolling update. Postgres is a single-replica SPOF here (the
+> self-contained option mirroring the compose stack); a managed instance or an operator is the
+> HA route.
 
 Scale a service manually at any time:
 
